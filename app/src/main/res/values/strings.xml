@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Video Downloader</string>
+    <string name="title">Video Downloader</string>
+    <string name="subtitle">Download videos you own or have explicit permission to save.</string>
+    <string name="url_hint">Paste a direct HTTPS video URL</string>
+    <string name="rights_check">I confirm I have the rights or permission to download this video.</string>
+    <string name="download_button">Download</string>
+    <string name="status_placeholder">Status updates will appear here.</string>
+    <string name="policy_note">Social media domains are blocked to align with platform policies and content rights.</string>
+    <string name="error_https_required">Please enter a valid HTTPS URL.</string>
+    <string name="error_rights_required">Please confirm you have permission to download this video.</string>
+    <string name="error_blocked_host">This domain is blocked. Use a direct URL from a source you own or control.</string>
+    <string name="download_description">Downloading your video</string>
+    <string name="download_started">Download started: %1$s</string>
+</resources>
