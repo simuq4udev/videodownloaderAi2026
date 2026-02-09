@@ -72,18 +72,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/download_button" />
 
-        <ImageView
-            android:id="@+id/download_ready_icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="16dp"
-            android:contentDescription="@string/download_ready_icon"
-            android:src="@android:drawable/stat_sys_download_done"
-            android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/status_text" />
-
         <TextView
             android:id="@+id/policy_note"
             android:layout_width="0dp"
@@ -94,7 +82,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/download_ready_icon" />
+            app:layout_constraintTop_toBottomOf="@id/status_text" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.core.widget.NestedScrollView>

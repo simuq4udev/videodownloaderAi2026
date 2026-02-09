@@ -9,9 +9,8 @@ Market-standard starter project for a **policy-compliant** video downloader. The
 - **Direct URLs only** (e.g., your own CDN or storage bucket).
 
 ## ✅ Features
-- Bottom navigation with **Home**, **History**, and **Settings** screens.
-- DownloadManager integration with Wi‑Fi only toggle.
-- Local download history stored on-device.
+- Clean single-activity UI (Material Components).
+- DownloadManager integration.
 - Status messaging for compliance and errors.
 
 ## ✅ Build & Run
@@ -20,4 +19,4 @@ Market-standard starter project for a **policy-compliant** video downloader. The
 3. Run on a device/emulator (Android 7.0+).
 
 ## ✅ Policy Note
-This template is designed to comply with Google Play and platform policies by preventing downloads from social media sites and requiring user permission confirmation. It is intended for **content you own or have explicit permission to download**. The app does **not** include any scraping or social media extraction logic.
+This template is designed to comply with Google Play and platform policies by preventing downloads from social media sites and requiring user permission confirmation. It is intended for **content you own or have explicit permission to download**.
