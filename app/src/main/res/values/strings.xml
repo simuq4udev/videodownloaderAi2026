@@ -8,19 +8,8 @@
     <string name="status_placeholder">Status updates will appear here.</string>
     <string name="policy_note">Social media domains are blocked to align with platform policies and content rights.</string>
     <string name="error_https_required">Please enter a valid HTTPS URL.</string>
-    <string name="error_url_required">Please paste a URL to continue.</string>
-    <string name="error_invalid_url">Please enter a valid HTTPS URL with a domain.</string>
     <string name="error_rights_required">Please confirm you have permission to download this video.</string>
     <string name="error_blocked_host">This domain is blocked. Use a direct URL from a source you own or control.</string>
     <string name="download_description">Downloading your video</string>
     <string name="download_started">Download started: %1$s</string>
-    <string name="history_title">Download history</string>
-    <string name="history_empty">No downloads yet. Your completed downloads will appear here.</string>
-    <string name="history_clear">Clear history</string>
-    <string name="settings_title">Settings</string>
-    <string name="settings_wifi_only">Download over Wi‑Fi only</string>
-    <string name="settings_policy_note">This app only supports direct HTTPS video links and blocks social media sources.</string>
-    <string name="menu_home">Home</string>
-    <string name="menu_history">History</string>
-    <string name="menu_settings">Settings</string>
 </resources>

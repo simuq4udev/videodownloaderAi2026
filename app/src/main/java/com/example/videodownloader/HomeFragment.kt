@@ -48,19 +48,12 @@ class HomeFragment : Fragment() {
 
         downloadButton.setOnClickListener {
             val urlText = urlInput.text.toString().trim()
-            if (urlText.isEmpty()) {
-                statusText.text = getString(R.string.error_url_required)
+            if (!URLUtil.isHttpsUrl(urlText)) {
+                statusText.text = getString(R.string.error_https_required)
                 return@setOnClickListener
             }
 
-            val uri = Uri.parse(urlText)
-            val scheme = uri.scheme?.lowercase()
-            val host = uri.host?.lowercase().orEmpty()
-            if (scheme != "https" || host.isBlank()) {
-                statusText.text = getString(R.string.error_invalid_url)
-                return@setOnClickListener
-            }
-
+            val host = Uri.parse(urlText).host?.lowercase().orEmpty()
             if (blockedHosts.any { host == it || host.endsWith(".$it") }) {
                 statusText.text = getString(R.string.error_blocked_host)
                 return@setOnClickListener
