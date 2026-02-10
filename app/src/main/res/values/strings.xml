@@ -30,4 +30,9 @@
     <string name="about_title">About</string>
     <string name="about_version_value">Version %1$s</string>
     <string name="about_copyright_text">© 2026 VideoDownloader</string>
+
+    <string name="invalid_video_page_url">Please enter a valid video page URL.</string>
+    <string name="opened_in_browser_status">Opened in browser</string>
+    <string name="browser_download_instruction">Page opened. Tap the website's download button in browser to download the video.</string>
+    <string name="no_browser_found">No browser app found.</string>
 </resources>
