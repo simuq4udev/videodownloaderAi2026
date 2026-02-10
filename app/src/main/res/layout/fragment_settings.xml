@@ -1,39 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:padding="24dp">
 
     <TextView
         android:id="@+id/settings_title"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/settings_title"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switch_wifi_only"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="@string/settings_wifi_only"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/settings_title" />
+        android:text="@string/settings_wifi_only" />
+
+    <EditText
+        android:id="@+id/default_directory_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="@string/settings_default_directory"
+        android:inputType="text" />
+
+    <EditText
+        android:id="@+id/max_downloads_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/settings_max_simultaneous"
+        android:inputType="number" />
+
+    <Button
+        android:id="@+id/settings_save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/settings_save" />
 
     <TextView
         android:id="@+id/settings_policy_note"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="20dp"
         android:text="@string/settings_policy_note"
-        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/switch_wifi_only" />
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Caption" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

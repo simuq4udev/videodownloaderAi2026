@@ -1,62 +1,91 @@
 package com.example.videodownloader
 
-import android.app.DownloadManager
-import android.content.Context
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.URLUtil
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.videodownloader.home.DownloadQueueAdapter
+import com.example.videodownloader.home.HomeViewModel
+import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
-    private val blockedHosts = setOf(
-        "facebook.com",
-        "fb.watch",
-        "instagram.com",
-        "tiktok.com",
-        "twitter.com",
-        "x.com",
-        "youtube.com",
-        "youtu.be",
-        "vimeo.com",
-        "snapchat.com",
-        "pinterest.com"
-    )
+    private val viewModel: HomeViewModel by viewModels()
+    private lateinit var rightsCheck: CheckBox
+    private lateinit var statusText: TextView
+    private lateinit var urlInput: EditText
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) {
+                statusText.text = getString(R.string.permission_storage_denied)
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.fragment_home, container, false)
-    }
+    ): View = inflater.inflate(R.layout.fragment_home, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val urlInput = view.findViewById<EditText>(R.id.url_input)
-        val rightsCheck = view.findViewById<CheckBox>(R.id.rights_check)
+        urlInput = view.findViewById(R.id.url_input)
+        rightsCheck = view.findViewById(R.id.rights_check)
         val downloadButton = view.findViewById<Button>(R.id.download_button)
-        val statusText = view.findViewById<TextView>(R.id.status_text)
-        val preferences = DownloadPreferences(requireContext())
-        val historyStore = DownloadHistoryStore(requireContext())
+        statusText = view.findViewById(R.id.status_text)
+        val queueList = view.findViewById<RecyclerView>(R.id.queue_list)
+
+        val queueAdapter = DownloadQueueAdapter(
+            onPauseClicked = { viewModel.pauseDownload(it) },
+            onResumeClicked = { viewModel.resumeDownload(it) }
+        )
+
+        queueList.layoutManager = LinearLayoutManager(requireContext())
+        queueList.adapter = queueAdapter
+
+        lifecycleScope.launch {
+            viewModel.state.collect { state ->
+                statusText.text = state.statusMessage
+                queueAdapter.submitList(state.items)
+            }
+        }
 
         downloadButton.setOnClickListener {
             val urlText = urlInput.text.toString().trim()
-            if (!URLUtil.isHttpsUrl(urlText)) {
-                statusText.text = getString(R.string.error_https_required)
-                return@setOnClickListener
-            }
+            val validationResult = UrlPolicyValidator.validate(urlText)
+            when (validationResult) {
+                UrlValidationResult.InvalidHttps -> {
+                    statusText.text = getString(R.string.error_https_required)
+                    return@setOnClickListener
+                }
 
-            val host = Uri.parse(urlText).host?.lowercase().orEmpty()
-            if (blockedHosts.any { host == it || host.endsWith(".$it") }) {
-                statusText.text = getString(R.string.error_blocked_host)
-                return@setOnClickListener
+                is UrlValidationResult.BlockedSocialHost -> {
+                    if (validationResult.host == "facebook.com" || validationResult.host == "fb.watch") {
+                        statusText.text = getString(R.string.error_facebook_requires_api)
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlText)))
+                    } else {
+                        statusText.text = getString(R.string.error_blocked_host_with_reason)
+                    }
+                    return@setOnClickListener
+                }
+
+                UrlValidationResult.Valid -> Unit
             }
 
             if (!rightsCheck.isChecked) {
@@ -64,26 +93,17 @@ class HomeFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            val fileName = URLUtil.guessFileName(urlText, null, null)
-            val request = DownloadManager.Request(Uri.parse(urlText))
-                .setTitle(fileName)
-                .setDescription(getString(R.string.download_description))
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setAllowedOverMetered(!preferences.wifiOnly)
-                .setAllowedOverRoaming(false)
-                .setDestinationInExternalPublicDir("Download", fileName)
+            ensureStoragePermissionIfRequired()
+            viewModel.enqueueDownload(urlText)
+        }
+    }
 
-            val downloadManager = requireContext().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val downloadId = downloadManager.enqueue(request)
-            historyStore.add(
-                DownloadHistoryItem(
-                    downloadId = downloadId,
-                    url = urlText,
-                    fileName = fileName,
-                    timestamp = System.currentTimeMillis()
-                )
-            )
-            statusText.text = getString(R.string.download_started, fileName)
+    private fun ensureStoragePermissionIfRequired() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return
+
+        val permission = Manifest.permission.WRITE_EXTERNAL_STORAGE
+        if (ContextCompat.checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(permission)
         }
     }
 }

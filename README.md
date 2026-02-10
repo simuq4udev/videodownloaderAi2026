@@ -1,22 +1,31 @@
-# VideoDownloader (Android, Kotlin)
+# Video Downloader (Kotlin, Android)
 
-Market-standard starter project for a **policy-compliant** video downloader. The app only allows downloads from **direct HTTPS URLs** and **blocks common social media domains** to align with platform policies and content rights.
+A complete Android starter project for downloading **direct video file URLs** (for example `.mp4`) with:
+- Home screen URL input + download button
+- Download queue with progress and pause/resume controls
+- Download history screen
+- Settings screen (WiFi-only, default directory, max simultaneous downloads)
+- About screen (app info/version)
+- MVVM + Coroutines + DownloadManager + OkHttp/Retrofit dependencies
 
-## ✅ Compliance Principles
-- **User rights confirmation** required before download.
-- **Social media domains blocked** (YouTube, Instagram, TikTok, etc.).
-- **No circumvention** of DRM or platform restrictions.
-- **Direct URLs only** (e.g., your own CDN or storage bucket).
+## Important policy note
+This template **does not bypass platform protections** and does not implement scraping/extraction for social platforms (Instagram/Facebook/TikTok/Twitter).
+For those platforms, use official provider APIs and authorized content flows.
 
-## ✅ Features
-- Clean single-activity UI (Material Components).
-- DownloadManager integration.
-- Status messaging for compliance and errors.
+## Build in Android Studio
+1. Open project in Android Studio.
+2. Let Gradle sync dependencies.
+3. Run `app` on an emulator/device (Android 7.0+).
 
-## ✅ Build & Run
-1. Open the project in **Android Studio**.
-2. Sync Gradle.
-3. Run on a device/emulator (Android 7.0+).
+## Main project structure
+- `MainActivity` + bottom navigation host
+- `HomeFragment` + `HomeViewModel` + queue adapter
+- `HistoryFragment` and history adapter/store
+- `SettingsFragment` and shared preferences (`DownloadPreferences`)
+- `AboutFragment`
+- `network/VideoResolverRepository` for direct-media URL checks
 
-## ✅ Policy Note
-This template is designed to comply with Google Play and platform policies by preventing downloads from social media sites and requiring user permission confirmation. It is intended for **content you own or have explicit permission to download**.
+## Runtime permissions
+- Internet permission in manifest
+- Legacy storage permissions for older Android versions
+

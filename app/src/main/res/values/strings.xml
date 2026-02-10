@@ -3,13 +3,44 @@
     <string name="title">Video Downloader</string>
     <string name="subtitle">Download videos you own or have explicit permission to save.</string>
     <string name="url_hint">Paste a direct HTTPS video URL</string>
-    <string name="rights_check">I confirm I have the rights or permission to download this video.</string>
+    <string name="rights_check">I confirm I have permission to download this video.</string>
     <string name="download_button">Download</string>
     <string name="status_placeholder">Status updates will appear here.</string>
-    <string name="policy_note">Social media domains are blocked to align with platform policies and content rights.</string>
+    <string name="policy_note">This template only supports direct media URLs and does not bypass platform restrictions.</string>
     <string name="error_https_required">Please enter a valid HTTPS URL.</string>
+    <string name="error_invalid_url">Invalid or unsupported URL.</string>
     <string name="error_rights_required">Please confirm you have permission to download this video.</string>
-    <string name="error_blocked_host">This domain is blocked. Use a direct URL from a source you own or control.</string>
+    <string name="error_blocked_host_with_reason">This social platform URL is blocked in this template.</string>
+    <string name="error_facebook_requires_api">Facebook share links are opened in browser. Authorized API integration is required for in-app downloads.</string>
+    <string name="error_download_failed">Download failed. Check network and URL.</string>
+    <string name="error_max_simultaneous">Maximum simultaneous downloads reached (%1$d).</string>
     <string name="download_description">Downloading your video</string>
     <string name="download_started">Download started: %1$s</string>
+    <string name="download_paused">Download paused: %1$s</string>
+    <string name="queue_title">Download Queue</string>
+    <string name="queue_progress_format">%1$d%% • %2$s</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="permission_storage_denied">Storage permission denied.</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_wifi_only">Download on WiFi only</string>
+    <string name="settings_default_directory">Default download directory (e.g. Download)</string>
+    <string name="settings_max_simultaneous">Maximum simultaneous downloads (1-5)</string>
+    <string name="settings_save">Save settings</string>
+    <string name="settings_saved">Settings saved.</string>
+    <string name="settings_policy_note">Only download videos you own or have explicit permission to save.</string>
+
+    <string name="history_title">Downloaded Videos</string>
+    <string name="history_empty">No downloads yet.</string>
+    <string name="history_clear">Clear history</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_history">History</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_about">About</string>
+
+    <string name="about_title">About</string>
+    <string name="about_version_value">Version: %1$s</string>
+    <string name="about_copyright">Copyright © 2026 Video Downloader</string>
 </resources>
