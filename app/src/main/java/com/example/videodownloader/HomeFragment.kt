@@ -2,7 +2,6 @@ package com.example.videodownloader
 
 import android.app.DownloadManager
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.net.Uri
 import android.webkit.URLUtil
@@ -36,20 +35,14 @@ class HomeFragment : Fragment() {
 
         downloadButton.setOnClickListener {
             val urlText = urlInput.text.toString().trim()
-            val validationResult = UrlPolicyValidator.validate(urlText)
-            when (validationResult) {
+            when (UrlPolicyValidator.validate(urlText)) {
                 UrlValidationResult.InvalidHttps -> {
                     statusText.text = getString(R.string.error_https_required)
                     return@setOnClickListener
                 }
 
-                is UrlValidationResult.BlockedSocialHost -> {
-                    if (validationResult.host == "facebook.com" || validationResult.host == "fb.watch") {
-                        statusText.text = getString(R.string.error_facebook_requires_api)
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlText)))
-                    } else {
-                        statusText.text = getString(R.string.error_blocked_host_with_reason)
-                    }
+                UrlValidationResult.BlockedSocialHost -> {
+                    statusText.text = getString(R.string.error_blocked_host_with_reason)
                     return@setOnClickListener
                 }
 

@@ -6,7 +6,7 @@ import android.webkit.URLUtil
 sealed interface UrlValidationResult {
     data object Valid : UrlValidationResult
     data object InvalidHttps : UrlValidationResult
-    data class BlockedSocialHost(val host: String) : UrlValidationResult
+    data object BlockedSocialHost : UrlValidationResult
 }
 
 object UrlPolicyValidator {
@@ -30,9 +30,8 @@ object UrlPolicyValidator {
         }
 
         val host = Uri.parse(url).host?.lowercase().orEmpty()
-        val blockedMatch = blockedHosts.firstOrNull { host == it || host.endsWith(".$it") }
-        if (blockedMatch != null) {
-            return UrlValidationResult.BlockedSocialHost(blockedMatch)
+        if (blockedHosts.any { host == it || host.endsWith(".$it") }) {
+            return UrlValidationResult.BlockedSocialHost
         }
 
         return UrlValidationResult.Valid

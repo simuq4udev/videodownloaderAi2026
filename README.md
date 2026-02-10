@@ -66,16 +66,6 @@ app/src/main/java/com/example/videodownloader/
 4. Wire `HomeFragment` to use `ParseVideoUrlUseCase` + `EnqueueDownloadUseCase`.
 5. Replace `ServiceLocator` with Hilt when ready.
 
-
-## Why Facebook/Instagram links show "domain is blocked"
-This template intentionally blocks social media domains in `UrlPolicyValidator` to keep the app aligned with Google Play and platform terms. Facebook/Instagram post URLs are usually webpage links, not direct media-file URLs.
-
-If you need authorized support for those sources, use official provider APIs for content you own/manage and download only when your app has explicit rights.
-
-## Facebook link support (authorized method)
-Facebook share links are webpage URLs and are blocked in the direct downloader flow.
-Use the compliant API-based method described in `docs/FACEBOOK_AUTHORIZED_INTEGRATION.md`.
-
 ## ✅ Build & Run
 1. Open the project in **Android Studio**.
 2. Sync Gradle.

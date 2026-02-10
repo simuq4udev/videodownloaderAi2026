@@ -10,12 +10,11 @@
     <string name="error_https_required">Please enter a valid HTTPS URL.</string>
     <string name="error_rights_required">Please confirm you have permission to download this video.</string>
     <string name="error_blocked_host">This domain is blocked. Use a direct URL from a source you own or control.</string>
-    <string name="error_blocked_host_with_reason">This link is from a social platform and is blocked by app policy. Use a direct HTTPS media URL that you own or control.</string>
-    <string name="error_facebook_requires_api">Facebook share links are not direct media files. App will open this link in browser. Use Meta official API access with approved permissions for authorized download support.</string>
+    <string name="error_blocked_host_with_reason">This link is from a social platform (for example Facebook/Instagram), so it is blocked by app policy. Use a direct HTTPS media URL that you own/control, or integrate the platform's official API for authorized content.</string>
     <string name="download_description">Downloading your video</string>
     <string name="download_started">Download started: %1$s</string>
     <string name="settings_title">Settings</string>
-    <string name="settings_wifi_only">Download on WiFi only</string>
+    <string name="settings_wifi_only">Download on Wi-Fi only</string>
     <string name="settings_policy_note">Only download videos you own or have explicit permission to save. Social platform URLs may be restricted by policy.</string>
     <string name="history_title">Download History</string>
     <string name="history_empty">No downloads yet.</string>
