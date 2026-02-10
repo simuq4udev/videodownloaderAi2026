@@ -1,15 +1,3 @@
 <resources>
     <string name="app_name">VideoDownloader</string>
-    <string name="url_input_hint">Paste direct MP4 URL</string>
-    <string name="download_button_text">Download</string>
-    <string name="invalid_mp4_url">Enter a valid direct MP4 URL.</string>
-    <string name="storage_permission_required">Storage permission is required for downloads on this Android version.</string>
-    <string name="download_in_progress">Downloading video</string>
-    <string name="download_pending">Pending</string>
-    <string name="download_progress">Downloading… %1$d%%</string>
-    <string name="download_paused">Paused</string>
-    <string name="download_complete">Completed</string>
-    <string name="download_failed">Failed</string>
-    <string name="download_unknown">Unknown status</string>
-    <string name="unknown_file">Unknown file</string>
 </resources>
