@@ -2,8 +2,9 @@ package com.example.videodownloader
 
 import android.app.DownloadManager
 import android.content.Context
-import android.net.Uri
+import android.content.Intent
 import android.os.Bundle
+import android.net.Uri
 import android.webkit.URLUtil
 import android.widget.Button
 import android.widget.CheckBox
@@ -13,19 +14,6 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
-    private val blockedHosts = setOf(
-        "facebook.com",
-        "fb.watch",
-        "instagram.com",
-        "tiktok.com",
-        "twitter.com",
-        "x.com",
-        "youtube.com",
-        "youtu.be",
-        "vimeo.com",
-        "snapchat.com",
-        "pinterest.com"
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,15 +26,24 @@ class MainActivity : AppCompatActivity() {
 
         downloadButton.setOnClickListener {
             val urlText = urlInput.text.toString().trim()
-            if (!URLUtil.isHttpsUrl(urlText)) {
-                statusText.text = getString(R.string.error_https_required)
-                return@setOnClickListener
-            }
+            val validationResult = UrlPolicyValidator.validate(urlText)
+            when (validationResult) {
+                UrlValidationResult.InvalidHttps -> {
+                    statusText.text = getString(R.string.error_https_required)
+                    return@setOnClickListener
+                }
 
-            val host = Uri.parse(urlText).host?.lowercase().orEmpty()
-            if (blockedHosts.any { host == it || host.endsWith(".$it") }) {
-                statusText.text = getString(R.string.error_blocked_host)
-                return@setOnClickListener
+                is UrlValidationResult.BlockedSocialHost -> {
+                    if (validationResult.host == "facebook.com" || validationResult.host == "fb.watch") {
+                        statusText.text = getString(R.string.error_facebook_requires_api)
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlText)))
+                    } else {
+                        statusText.text = getString(R.string.error_blocked_host_with_reason)
+                    }
+                    return@setOnClickListener
+                }
+
+                UrlValidationResult.Valid -> Unit
             }
 
             if (!rightsCheck.isChecked) {
