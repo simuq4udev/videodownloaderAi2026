@@ -35,19 +35,14 @@ class HomeFragment : Fragment() {
 
         downloadButton.setOnClickListener {
             val urlText = urlInput.text.toString().trim()
-            val validationResult = UrlPolicyValidator.validate(urlText)
-            when (validationResult) {
+            when (UrlPolicyValidator.validate(urlText)) {
                 UrlValidationResult.InvalidHttps -> {
                     statusText.text = getString(R.string.error_https_required)
                     return@setOnClickListener
                 }
 
-                is UrlValidationResult.BlockedSocialHost -> {
-                    statusText.text = if (validationResult.host == "facebook.com" || validationResult.host == "fb.watch") {
-                        getString(R.string.error_facebook_requires_api)
-                    } else {
-                        getString(R.string.error_blocked_host_with_reason)
-                    }
+                UrlValidationResult.BlockedSocialHost -> {
+                    statusText.text = getString(R.string.error_blocked_host_with_reason)
                     return@setOnClickListener
                 }
 
