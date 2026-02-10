@@ -1,5 +1,3 @@
 <resources>
     <string name="app_name">VideoDownloader</string>
-    <string name="url_input_hint">Paste video URL</string>
-    <string name="download_button_text">Download</string>
 </resources>
