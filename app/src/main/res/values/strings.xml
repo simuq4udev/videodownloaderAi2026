@@ -10,6 +10,7 @@
     <string name="error_https_required">Please enter a valid HTTPS URL.</string>
     <string name="error_rights_required">Please confirm you have permission to download this video.</string>
     <string name="error_blocked_host">This domain is blocked. Use a direct URL from a source you own or control.</string>
+    <string name="error_blocked_host_with_reason">This link is from a social platform (for example Facebook or Instagram), so it is blocked by app policy. Use a direct HTTPS media URL that you own or control, or integrate the platform official API for authorized content.</string>
     <string name="download_description">Downloading your video</string>
     <string name="download_started">Download started: %1$s</string>
 </resources>
