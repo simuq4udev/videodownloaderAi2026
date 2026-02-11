@@ -45,4 +45,8 @@
     <string name="download_current_page_button_text">Download current page URL</string>
     <string name="close_browser_button">✕</string>
     <string name="close_browser_content_description">Close browser</string>
+    <string name="history_button_text">History</string>
+    <string name="download_history_title">Downloaded files</string>
+    <string name="no_video_player_found">No video player found.</string>
+    <string name="download_completed">Download completed</string>
 </resources>

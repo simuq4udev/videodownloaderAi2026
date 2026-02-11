@@ -3,8 +3,10 @@ package com.example.videodownloader
 import android.Manifest
 import android.app.DownloadManager
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -38,6 +40,7 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
     private var pendingDownloadUrl: String? = null
     private var detectedVideoUrl: String? = null
     private var currentPageUrl: String? = null
+    private val trackedDownloadIds = mutableSetOf<Long>()
 
     private val okHttpClient = OkHttpClient.Builder()
         .followRedirects(true)
@@ -45,6 +48,15 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
+
+    private val downloadCompleteReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (!trackedDownloadIds.remove(id)) return
+            Toast.makeText(requireContext(), R.string.download_completed, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -228,7 +240,8 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
             )
 
         try {
-            downloadManager.enqueue(request)
+            val id = downloadManager.enqueue(request)
+            trackedDownloadIds.add(id)
             Toast.makeText(requireContext(), R.string.download_started, Toast.LENGTH_SHORT).show()
         } catch (_: Exception) {
             Toast.makeText(requireContext(), R.string.download_failed_to_start, Toast.LENGTH_SHORT).show()
@@ -241,6 +254,19 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(requireContext(), R.string.no_browser_found, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        requireContext().registerReceiver(
+            downloadCompleteReceiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        )
+    }
+
+    override fun onStop() {
+        runCatching { requireContext().unregisterReceiver(downloadCompleteReceiver) }
+        super.onStop()
     }
 
     override fun onDestroyView() {

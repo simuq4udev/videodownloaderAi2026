@@ -14,6 +14,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var urlInput: EditText
     private lateinit var downloadButton: Button
     private lateinit var settingsButton: Button
+    private lateinit var historyButton: Button
     private lateinit var downloadsRecyclerView: RecyclerView
     private lateinit var fragmentContainer: View
     private val adapter = DownloadListAdapter()
@@ -25,6 +26,7 @@ class MainActivity : AppCompatActivity() {
         urlInput = findViewById(R.id.url_input)
         downloadButton = findViewById(R.id.download_button)
         settingsButton = findViewById(R.id.settings_button)
+        historyButton = findViewById(R.id.history_button)
         downloadsRecyclerView = findViewById(R.id.downloads_recycler_view)
         fragmentContainer = findViewById(R.id.fragment_container)
 
@@ -34,6 +36,16 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.addOnBackStackChangedListener {
             fragmentContainer.visibility =
                 if (supportFragmentManager.backStackEntryCount > 0) View.VISIBLE else View.GONE
+        }
+
+
+        historyButton.setOnClickListener {
+            fragmentContainer.visibility = View.VISIBLE
+            supportFragmentManager
+                .beginTransaction()
+                .replace(R.id.fragment_container, DownloadHistoryFragment())
+                .addToBackStack("history")
+                .commit()
         }
 
         settingsButton.setOnClickListener {
