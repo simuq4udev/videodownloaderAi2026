@@ -73,7 +73,7 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         }
 
         downloadDetectedButton.setOnClickListener {
-            val url = detectedVideoUrl
+            val url = detectedVideoUrl ?: currentPageUrl
             if (url.isNullOrBlank()) {
                 Toast.makeText(requireContext(), R.string.no_video_detected, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -136,17 +136,18 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
                     currentPageUrl = url
                     return false
                 }
-                return try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    true
-                } catch (_: Exception) {
-                    true
-                }
+                // Do not auto-open external apps from WebView navigations.
+                // This avoids duplicate opening (in-app + external) for share/intents.
+                return true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (!url.isNullOrBlank()) currentPageUrl = url
+                if (!currentPageUrl.isNullOrBlank() && detectedVideoUrl.isNullOrBlank()) {
+                    downloadDetectedButton.isEnabled = true
+                    downloadDetectedButton.text = getString(R.string.download_current_page_button_text)
+                }
                 detectVideoViaJavascript()
             }
 
@@ -177,6 +178,12 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
               if (v && v.src) return v.src;
               var source = document.querySelector('video source');
               if (source && source.src) return source.src;
+              var og = document.querySelector('meta[property=\"og:video\"]');
+              if (og && og.content) return og.content;
+              var ogSecure = document.querySelector('meta[property=\"og:video:secure_url\"]');
+              if (ogSecure && ogSecure.content) return ogSecure.content;
+              var tw = document.querySelector('meta[name=\"twitter:player:stream\"]');
+              if (tw && tw.content) return tw.content;
               return '';
             })();
         """.trimIndent()
