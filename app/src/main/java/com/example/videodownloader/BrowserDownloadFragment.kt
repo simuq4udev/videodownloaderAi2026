@@ -31,6 +31,7 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
     private lateinit var webView: WebView
     private lateinit var downloadDetectedButton: Button
     private lateinit var openExternallyButton: Button
+    private lateinit var closeBrowserButton: Button
     private lateinit var downloadManager: DownloadManager
 
     private var pendingDownloadUrl: String? = null
@@ -61,6 +62,7 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         webView = view.findViewById(R.id.in_app_webview)
         downloadDetectedButton = view.findViewById(R.id.download_detected_button)
         openExternallyButton = view.findViewById(R.id.open_external_button)
+        closeBrowserButton = view.findViewById(R.id.close_browser_button)
 
         setupWebView()
 
@@ -70,6 +72,10 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         openExternallyButton.setOnClickListener {
             val target = currentPageUrl ?: initialUrl
             openInExternalBrowser(target)
+        }
+
+        closeBrowserButton.setOnClickListener {
+            parentFragmentManager.popBackStack()
         }
 
         downloadDetectedButton.setOnClickListener {
