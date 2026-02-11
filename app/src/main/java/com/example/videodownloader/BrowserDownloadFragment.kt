@@ -19,6 +19,7 @@ import android.webkit.WebResourceError
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import androidx.appcompat.widget.AppCompatImageButton
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -31,7 +32,7 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
     private lateinit var webView: WebView
     private lateinit var downloadDetectedButton: Button
     private lateinit var openExternallyButton: Button
-    private lateinit var closeBrowserButton: Button
+    private lateinit var closeBrowserButton: AppCompatImageButton
     private lateinit var downloadManager: DownloadManager
 
     private var pendingDownloadUrl: String? = null
