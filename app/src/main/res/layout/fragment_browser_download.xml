@@ -11,9 +11,19 @@
         android:layout_height="wrap_content"
         android:enabled="false"
         android:text="@string/download_detected_button_waiting"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/open_external_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/open_external_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/open_external_browser"
+        app:layout_constraintBottom_toBottomOf="@id/download_detected_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/download_detected_button" />
 
     <WebView
         android:id="@+id/in_app_webview"

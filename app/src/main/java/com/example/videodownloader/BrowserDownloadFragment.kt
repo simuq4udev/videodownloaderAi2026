@@ -2,16 +2,20 @@ package com.example.videodownloader
 
 import android.Manifest
 import android.app.DownloadManager
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.URLUtil
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceError
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -19,14 +23,26 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
     private lateinit var webView: WebView
     private lateinit var downloadDetectedButton: Button
+    private lateinit var openExternallyButton: Button
     private lateinit var downloadManager: DownloadManager
 
     private var pendingDownloadUrl: String? = null
     private var detectedVideoUrl: String? = null
+    private var currentPageUrl: String? = null
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -44,11 +60,17 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
 
         webView = view.findViewById(R.id.in_app_webview)
         downloadDetectedButton = view.findViewById(R.id.download_detected_button)
+        openExternallyButton = view.findViewById(R.id.open_external_button)
 
         setupWebView()
 
         val initialUrl = requireArguments().getString(ARG_URL).orEmpty()
-        webView.loadUrl(initialUrl)
+        resolveAndLoadUrl(initialUrl)
+
+        openExternallyButton.setOnClickListener {
+            val target = currentPageUrl ?: initialUrl
+            openInExternalBrowser(target)
+        }
 
         downloadDetectedButton.setOnClickListener {
             val url = detectedVideoUrl
@@ -67,19 +89,76 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         }
     }
 
+    private fun resolveAndLoadUrl(initialUrl: String) {
+        Thread {
+            val resolved = tryResolveFinalUrl(initialUrl)
+            requireActivity().runOnUiThread {
+                currentPageUrl = resolved
+                webView.loadUrl(resolved)
+            }
+        }.start()
+    }
+
+    private fun tryResolveFinalUrl(initialUrl: String): String {
+        return try {
+            val request = Request.Builder()
+                .url(initialUrl)
+                .header("User-Agent", MOBILE_UA)
+                .get()
+                .build()
+            okHttpClient.newCall(request).execute().use { response ->
+                response.request.url.toString()
+            }
+        } catch (_: Exception) {
+            initialUrl
+        }
+    }
+
     private fun setupWebView() {
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        webView.webChromeClient = WebChromeClient()
+        webView.settings.loadsImagesAutomatically = true
+        webView.settings.mediaPlaybackRequiresUserGesture = false
+        webView.settings.userAgentString = MOBILE_UA
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        }
 
+        webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false
+                val url = request?.url?.toString().orEmpty()
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    currentPageUrl = url
+                    return false
+                }
+                return try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    true
+                } catch (_: Exception) {
+                    true
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                if (!url.isNullOrBlank()) currentPageUrl = url
                 detectVideoViaJavascript()
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    Toast.makeText(requireContext(), R.string.webview_load_failed_try_external, Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -142,6 +221,14 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
         }
     }
 
+    private fun openInExternalBrowser(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(requireContext(), R.string.no_browser_found, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onDestroyView() {
         webView.stopLoading()
         webView.destroy()
@@ -150,6 +237,8 @@ class BrowserDownloadFragment : Fragment(R.layout.fragment_browser_download) {
 
     companion object {
         private const val ARG_URL = "arg_url"
+        private const val MOBILE_UA =
+            "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
 
         fun newInstance(url: String): BrowserDownloadFragment {
             return BrowserDownloadFragment().apply {

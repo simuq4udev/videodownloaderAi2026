@@ -40,4 +40,6 @@
     <string name="download_detected_button_waiting">Waiting for video detection…</string>
     <string name="download_detected_button_text">Download detected video</string>
     <string name="no_video_detected">No video detected yet on this page. Play the video first.</string>
+    <string name="open_external_browser">Open in browser</string>
+    <string name="webview_load_failed_try_external">Page failed in app. Use Open in browser button.</string>
 </resources>
