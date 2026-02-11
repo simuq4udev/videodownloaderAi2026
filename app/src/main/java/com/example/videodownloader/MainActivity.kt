@@ -1,14 +1,20 @@
 package com.example.videodownloader
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
+import android.Manifest
+import android.app.DownloadManager
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Patterns
+import android.webkit.URLUtil
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -18,10 +24,25 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settingsButton: Button
     private lateinit var downloadsRecyclerView: RecyclerView
     private val adapter = DownloadListAdapter()
+    private lateinit var downloadManager: DownloadManager
+
+    private var pendingUrl: String? = null
+
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                pendingUrl?.let { enqueueDownload(it) }
+            } else {
+                Toast.makeText(this, R.string.storage_permission_required, Toast.LENGTH_SHORT).show()
+            }
+            pendingUrl = null
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
 
         urlInput = findViewById(R.id.url_input)
         downloadButton = findViewById(R.id.download_button)
@@ -40,14 +61,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         downloadButton.setOnClickListener {
-            val rawUrl = urlInput.text.toString().trim()
-            val finalUrl = normalizeUrl(rawUrl)
-            if (!isValidWebUrl(finalUrl)) {
+            val normalizedUrl = normalizeUrl(urlInput.text.toString().trim())
+            if (!isValidWebUrl(normalizedUrl)) {
                 Toast.makeText(this, R.string.invalid_video_page_url, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            openInBrowser(finalUrl)
+            if (needsStoragePermission() && !hasStoragePermission()) {
+                pendingUrl = normalizedUrl
+                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                return@setOnClickListener
+            }
+
+            enqueueDownload(normalizedUrl)
         }
     }
 
@@ -60,25 +86,42 @@ class MainActivity : AppCompatActivity() {
         return Patterns.WEB_URL.matcher(url).matches()
     }
 
-    private fun openInBrowser(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-        }
+    private fun hasStoragePermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun needsStoragePermission(): Boolean = Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+
+    private fun enqueueDownload(url: String) {
+        val fileName = URLUtil.guessFileName(url, null, null)
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle(fileName)
+            .setDescription(getString(R.string.download_in_progress))
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
+            .setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_MOVIES,
+                "VideoDownloader/$fileName"
+            )
 
         try {
-            startActivity(intent)
+            val id = downloadManager.enqueue(request)
             adapter.addItem(
                 DownloadItemUi(
-                    id = System.currentTimeMillis(),
-                    fileName = url,
-                    statusText = getString(R.string.opened_in_browser_status),
+                    id = id,
+                    fileName = fileName,
+                    statusText = getString(R.string.download_started),
                     progress = 100,
                     isDone = true
                 )
             )
-            Toast.makeText(this, R.string.browser_download_instruction, Toast.LENGTH_LONG).show()
-        } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.no_browser_found, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.download_started, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.download_failed_to_start, Toast.LENGTH_SHORT).show()
         }
     }
 }

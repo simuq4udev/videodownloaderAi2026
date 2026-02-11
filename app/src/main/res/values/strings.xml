@@ -35,4 +35,6 @@
     <string name="opened_in_browser_status">Opened in browser</string>
     <string name="browser_download_instruction">Page opened. Tap the website's download button in browser to download the video.</string>
     <string name="no_browser_found">No browser app found.</string>
+    <string name="download_started">Download started</string>
+    <string name="download_failed_to_start">Could not start download for this URL.</string>
 </resources>
