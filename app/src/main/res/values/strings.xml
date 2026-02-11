@@ -26,4 +26,6 @@
     <string name="video_not_found">No video file detected on this page.</string>
     <string name="webview_opened">WebView opened. Find/play video, then tap Download Video.</string>
     <string name="searching_video">Searching video...</string>
+    <string name="webview_failed_to_load">Web page could not load. Check URL or internet.</string>
+    <string name="retrying_with_http">HTTPS failed, retrying with HTTP...</string>
 </resources>

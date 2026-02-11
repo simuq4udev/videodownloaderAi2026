@@ -12,7 +12,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.DownloadListener
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -37,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webDownloadButton: Button
 
     private var currentPreviewUrl: String = ""
+    private var hasRetriedWithHttp: Boolean = false
     private var detectedVideoUrl: String? = null
 
     private val adapter = DownloadListAdapter { historyItem ->
@@ -87,6 +91,7 @@ class MainActivity : AppCompatActivity() {
             urlInput.setText(normalizedUrl)
             detectedVideoUrl = null
             currentPreviewUrl = normalizedUrl
+            hasRetriedWithHttp = false
             webDownloadButton.isEnabled = false
             webDownloadButton.text = getString(R.string.searching_video)
             webContainer.visibility = View.VISIBLE
@@ -131,16 +136,72 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 currentPreviewUrl = url.orEmpty()
+                hasRetriedWithHttp = false
                 detectVideoUrlFromPage { foundUrl ->
                     if (!foundUrl.isNullOrBlank()) {
                         setDetectedVideoUrl(foundUrl)
                     }
                 }
             }
+
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
+                val target = request?.url?.toString().orEmpty()
+                if (target.startsWith("http://") || target.startsWith("https://")) {
+                    return false
+                }
+
+                return try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                    true
+                } catch (_: ActivityNotFoundException) {
+                    false
+                }
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame != true) return
+
+                val failingUrl = request.url?.toString().orEmpty()
+                if (!hasRetriedWithHttp && failingUrl.startsWith("https://")) {
+                    hasRetriedWithHttp = true
+                    val fallbackUrl = "http://" + failingUrl.removePrefix("https://")
+                    view?.loadUrl(fallbackUrl)
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.retrying_with_http),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return
+                }
+
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.webview_failed_to_load),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
         previewWebView.settings.javaScriptEnabled = true
         previewWebView.settings.domStorageEnabled = true
-        previewWebView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+        previewWebView.settings.loadsImagesAutomatically = true
+        previewWebView.settings.useWideViewPort = true
+        previewWebView.settings.loadWithOverviewMode = true
+        previewWebView.settings.javaScriptCanOpenWindowsAutomatically = true
+        previewWebView.settings.mediaPlaybackRequiresUserGesture = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            previewWebView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            CookieManager.getInstance().setAcceptThirdPartyCookies(previewWebView, true)
+        }
+
+        previewWebView.setDownloadListener(DownloadListener { url, _, contentDisposition, mimeType, _ ->
             val looksVideo = !url.isNullOrBlank() && (
                 isLikelyVideoUrl(url) ||
                     mimeType.orEmpty().startsWith("video/") ||
