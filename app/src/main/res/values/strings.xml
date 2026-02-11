@@ -17,4 +17,13 @@
     <string name="history_status_only">Status: %1$s</string>
     <string name="history_status_and_location">Status: %1$s\nSaved at: %2$s</string>
     <string name="history_missing">%1$s (record exists, but file info is unavailable)</string>
+    <string name="download_from_webview">Download Video</string>
+    <string name="close_cross">✕</string>
+    <string name="cannot_open_file">Cannot open this file on your device.</string>
+    <string name="file_not_ready">File not downloaded yet. Please wait.</string>
+
+    <string name="video_link_detected">Video link detected.</string>
+    <string name="video_not_found">No video file detected on this page.</string>
+    <string name="webview_opened">WebView opened. Find/play video, then tap Download Video.</string>
+    <string name="searching_video">Searching video...</string>
 </resources>
