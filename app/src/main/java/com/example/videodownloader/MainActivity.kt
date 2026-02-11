@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,6 +15,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var downloadButton: Button
     private lateinit var settingsButton: Button
     private lateinit var downloadsRecyclerView: RecyclerView
+    private lateinit var fragmentContainer: View
     private val adapter = DownloadListAdapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,14 +26,21 @@ class MainActivity : AppCompatActivity() {
         downloadButton = findViewById(R.id.download_button)
         settingsButton = findViewById(R.id.settings_button)
         downloadsRecyclerView = findViewById(R.id.downloads_recycler_view)
+        fragmentContainer = findViewById(R.id.fragment_container)
 
         downloadsRecyclerView.layoutManager = LinearLayoutManager(this)
         downloadsRecyclerView.adapter = adapter
 
+        supportFragmentManager.addOnBackStackChangedListener {
+            fragmentContainer.visibility =
+                if (supportFragmentManager.backStackEntryCount > 0) View.VISIBLE else View.GONE
+        }
+
         settingsButton.setOnClickListener {
+            fragmentContainer.visibility = View.VISIBLE
             supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.main_root, SettingsFragment())
+                .replace(R.id.fragment_container, SettingsFragment())
                 .addToBackStack("settings")
                 .commit()
         }
@@ -43,9 +52,10 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            fragmentContainer.visibility = View.VISIBLE
             supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.main_root, BrowserDownloadFragment.newInstance(normalizedUrl))
+                .replace(R.id.fragment_container, BrowserDownloadFragment.newInstance(normalizedUrl))
                 .addToBackStack("browser_download")
                 .commit()
         }

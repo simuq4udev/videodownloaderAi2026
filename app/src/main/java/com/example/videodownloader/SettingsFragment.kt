@@ -71,7 +71,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         aboutButton.setOnClickListener {
             parentFragmentManager
                 .beginTransaction()
-                .replace(R.id.main_root, AboutFragment())
+                .replace(R.id.fragment_container, AboutFragment())
                 .addToBackStack("about")
                 .commit()
         }
