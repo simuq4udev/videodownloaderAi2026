@@ -2,16 +2,21 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/white"
     android:fitsSystemWindows="true"
-    android:orientation="vertical"
-    android:padding="8dp"
-    android:background="@android:color/white">
+    android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/browser_top_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:minHeight="56dp"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp">
 
         <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/close_browser_button"
@@ -35,6 +40,7 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:enabled="false"
+            android:maxLines="1"
             android:text="@string/download_detected_button_waiting" />
     </LinearLayout>
 
@@ -42,7 +48,6 @@
         android:id="@+id/in_app_webview"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
         android:layout_weight="1" />
 
 </LinearLayout>
