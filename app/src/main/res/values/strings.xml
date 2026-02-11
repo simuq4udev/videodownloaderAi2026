@@ -37,4 +37,7 @@
     <string name="no_browser_found">No browser app found.</string>
     <string name="download_started">Download started</string>
     <string name="download_failed_to_start">Could not start download for this URL.</string>
+    <string name="download_detected_button_waiting">Waiting for video detection…</string>
+    <string name="download_detected_button_text">Download detected video</string>
+    <string name="no_video_detected">No video detected yet on this page. Play the video first.</string>
 </resources>
