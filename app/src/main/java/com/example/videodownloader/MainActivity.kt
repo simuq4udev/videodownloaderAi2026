@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
@@ -134,8 +135,8 @@ class MainActivity : AppCompatActivity() {
         detectedContentDisposition = null
         currentPreviewUrl = url
         hasRetriedWithHttp = false
-        webDownloadButton.isEnabled = false
-        webDownloadButton.text = getString(R.string.searching_video)
+        webDownloadButton.isEnabled = true
+        webDownloadButton.text = getString(R.string.download_from_webview)
 
         if (isLikelyVideoUrl(url)) {
             setDetectedVideoUrl(url)
@@ -157,8 +158,8 @@ class MainActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 detectedVideoUrl = null
-                webDownloadButton.isEnabled = false
-                webDownloadButton.text = getString(R.string.searching_video)
+                webDownloadButton.isEnabled = true
+                webDownloadButton.text = getString(R.string.download_from_webview)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -257,6 +258,17 @@ class MainActivity : AppCompatActivity() {
                 setDetectedVideoUrl(url!!)
             }
         })
+
+        previewWebView.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_UP) {
+                detectVideoUrlFromPage { foundUrl ->
+                    if (!foundUrl.isNullOrBlank()) {
+                        setDetectedVideoUrl(foundUrl)
+                    }
+                }
+            }
+            false
+        }
     }
 
     private fun startDownloadFromWebContainer() {
