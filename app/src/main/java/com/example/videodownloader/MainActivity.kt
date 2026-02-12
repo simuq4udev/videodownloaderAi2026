@@ -298,8 +298,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectInlineVideoButtons() {
+        val buttonLabel = getString(R.string.inline_download_video)
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
         val js = """
             (function() {
+              var buttonText = "$buttonLabel";
+
               function ensureButton(video) {
                 if (!video || video.dataset.androidDlBound === '1') return;
                 video.dataset.androidDlBound = '1';
@@ -314,7 +319,7 @@ class MainActivity : AppCompatActivity() {
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
-                btn.innerText = 'Download Video';
+                btn.innerText = buttonText;
                 btn.style.position = 'absolute';
                 btn.style.zIndex = '99999';
                 btn.style.right = '10px';

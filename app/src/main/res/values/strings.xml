@@ -17,6 +17,7 @@
     <string name="history_status_and_location">Status: %1$s\nSaved at: %2$s</string>
     <string name="history_missing">%1$s (record exists, but file info is unavailable)</string>
     <string name="download_from_webview">Download Video</string>
+    <string name="inline_download_video">Download Video</string>
     <string name="close_cross">✕</string>
     <string name="cannot_open_file">Cannot open this file on your device.</string>
     <string name="file_not_ready">File not downloaded yet. Please wait.</string>
