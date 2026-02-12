@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +13,8 @@ import android.os.Environment
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
+import android.webkit.MimeTypeMap
+import android.webkit.URLUtil
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -21,11 +22,10 @@ import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,7 +33,7 @@ import java.util.Locale
 class MainActivity : AppCompatActivity() {
 
     private lateinit var downloadManager: DownloadManager
-    private lateinit var emptyHistoryText: TextView
+    private lateinit var topControls: LinearLayout
     private lateinit var urlInput: EditText
     private lateinit var webContainer: LinearLayout
     private lateinit var previewWebView: WebView
@@ -42,10 +42,9 @@ class MainActivity : AppCompatActivity() {
     private var currentPreviewUrl: String = ""
     private var hasRetriedWithHttp: Boolean = false
     private var detectedVideoUrl: String? = null
-
-    private val adapter = DownloadListAdapter { historyItem ->
-        openDownloadedFile(historyItem.downloadId)
-    }
+    private var detectedUserAgent: String? = null
+    private var detectedMimeType: String? = null
+    private var detectedContentDisposition: String? = null
 
     private val downloadCompleteReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -55,7 +54,6 @@ class MainActivity : AppCompatActivity() {
             if (completedId == -1L || !savedHistoryRecords().containsKey(completedId)) return
 
             Toast.makeText(this@MainActivity, getString(R.string.download_completed), Toast.LENGTH_SHORT).show()
-            refreshHistory()
         }
     }
 
@@ -65,8 +63,7 @@ class MainActivity : AppCompatActivity() {
 
         downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
 
-        val historyList: RecyclerView = findViewById(R.id.history_list)
-        emptyHistoryText = findViewById(R.id.empty_history_text)
+        topControls = findViewById(R.id.top_controls)
         urlInput = findViewById(R.id.video_url_input)
         webContainer = findViewById(R.id.web_container)
         previewWebView = findViewById(R.id.preview_web_view)
@@ -76,10 +73,8 @@ class MainActivity : AppCompatActivity() {
         webDownloadButton = findViewById(R.id.web_download_button)
         val webCloseButton: Button = findViewById(R.id.web_close_button)
 
-        historyList.layoutManager = LinearLayoutManager(this)
-        historyList.adapter = adapter
-
         setupWebView()
+        setupBackPressHandler()
         webDownloadButton.isEnabled = false
         webDownloadButton.text = getString(R.string.searching_video)
 
@@ -88,15 +83,7 @@ class MainActivity : AppCompatActivity() {
             val normalizedUrl = normalizeInputUrl(rawUrl)
             if (!isValidForDownload(normalizedUrl)) return@setOnClickListener
 
-            urlInput.setText(normalizedUrl)
-            detectedVideoUrl = null
-            currentPreviewUrl = normalizedUrl
-            hasRetriedWithHttp = false
-            webDownloadButton.isEnabled = false
-            webDownloadButton.text = getString(R.string.searching_video)
-            webContainer.visibility = View.VISIBLE
-            previewWebView.loadUrl(normalizedUrl)
-            Toast.makeText(this, getString(R.string.webview_opened), Toast.LENGTH_SHORT).show()
+            openUrlInWebView(normalizedUrl)
         }
 
         webDownloadButton.setOnClickListener {
@@ -104,14 +91,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         webCloseButton.setOnClickListener {
-            webContainer.visibility = View.GONE
+            closeWebView()
         }
 
         historyButton.setOnClickListener {
-            refreshHistory()
-            if (savedHistoryRecords().isEmpty()) {
-                Toast.makeText(this, getString(R.string.no_history), Toast.LENGTH_SHORT).show()
-            }
+            startActivity(Intent(this, DownloadHistoryActivity::class.java))
         }
 
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
@@ -121,14 +105,47 @@ class MainActivity : AppCompatActivity() {
             @Suppress("DEPRECATION")
             registerReceiver(downloadCompleteReceiver, filter)
         }
-
-        refreshHistory()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(downloadCompleteReceiver)
         previewWebView.destroy()
+    }
+
+    private fun setupBackPressHandler() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webContainer.visibility == View.VISIBLE) {
+                    closeWebView()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+    }
+
+    private fun openUrlInWebView(url: String) {
+        urlInput.setText(url)
+        detectedVideoUrl = null
+        detectedUserAgent = null
+        detectedMimeType = null
+        detectedContentDisposition = null
+        currentPreviewUrl = url
+        hasRetriedWithHttp = false
+        webDownloadButton.isEnabled = false
+        webDownloadButton.text = getString(R.string.searching_video)
+
+        topControls.visibility = View.GONE
+        webContainer.visibility = View.VISIBLE
+        previewWebView.loadUrl(url)
+        Toast.makeText(this, getString(R.string.webview_opened), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun closeWebView() {
+        webContainer.visibility = View.GONE
+        topControls.visibility = View.VISIBLE
     }
 
     private fun setupWebView() {
@@ -201,7 +218,7 @@ class MainActivity : AppCompatActivity() {
             CookieManager.getInstance().setAcceptThirdPartyCookies(previewWebView, true)
         }
 
-        previewWebView.setDownloadListener(DownloadListener { url, _, contentDisposition, mimeType, _ ->
+        previewWebView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val looksVideo = !url.isNullOrBlank() && (
                 isLikelyVideoUrl(url) ||
                     mimeType.orEmpty().startsWith("video/") ||
@@ -210,6 +227,9 @@ class MainActivity : AppCompatActivity() {
                 )
 
             if (looksVideo) {
+                detectedUserAgent = userAgent
+                detectedMimeType = mimeType
+                detectedContentDisposition = contentDisposition
                 setDetectedVideoUrl(url!!)
             }
         })
@@ -223,14 +243,26 @@ class MainActivity : AppCompatActivity() {
 
         val knownUrl = detectedVideoUrl
         if (!knownUrl.isNullOrBlank() && validateUrl(knownUrl) == UrlValidation.VALID) {
-            enqueueDownload(knownUrl)
+            enqueueDownload(
+                urlText = knownUrl,
+                userAgentHeader = detectedUserAgent,
+                refererHeader = currentPreviewUrl,
+                mimeTypeHint = detectedMimeType,
+                contentDispositionHint = detectedContentDisposition
+            )
             return
         }
 
         detectVideoUrlFromPage { fromPage ->
             if (!fromPage.isNullOrBlank() && validateUrl(fromPage) == UrlValidation.VALID) {
                 setDetectedVideoUrl(fromPage)
-                enqueueDownload(fromPage)
+                enqueueDownload(
+                    urlText = fromPage,
+                    userAgentHeader = detectedUserAgent,
+                    refererHeader = currentPreviewUrl,
+                    mimeTypeHint = detectedMimeType,
+                    contentDispositionHint = detectedContentDisposition
+                )
             } else {
                 Toast.makeText(this, getString(R.string.video_not_found), Toast.LENGTH_SHORT).show()
             }
@@ -241,23 +273,54 @@ class MainActivity : AppCompatActivity() {
         detectedVideoUrl = url
         webDownloadButton.isEnabled = true
         webDownloadButton.text = getString(R.string.download_from_webview)
-        Toast.makeText(this, getString(R.string.video_link_detected), Toast.LENGTH_SHORT).show()
     }
 
     private fun detectVideoUrlFromPage(onDetected: (String?) -> Unit) {
         val js = """
             (function() {
+              function pick(arr) {
+                for (var i = 0; i < arr.length; i++) {
+                  var u = arr[i];
+                  if (!u) continue;
+                  if (/\.(mp4|webm|mkv|mov|m3u8)(\?|$)/i.test(u)) return u;
+                  if (/video|stream|playlist|manifest/i.test(u)) return u;
+                }
+                return '';
+              }
+
               var v = document.querySelector('video');
               if (v && v.currentSrc) return v.currentSrc;
               if (v && v.src) return v.src;
-              var s = document.querySelector('video source');
-              if (s && s.src) return s.src;
-              var candidates = document.querySelectorAll('source, a[href]');
-              for (var i = 0; i < candidates.length; i++) {
-                var u = candidates[i].src || candidates[i].href || '';
-                if (/\.(mp4|webm|mkv|mov|m3u8)(\?|$)/i.test(u)) return u;
+
+              var sourceEls = document.querySelectorAll('video source, source[src], source[data-src]');
+              var sourceUrls = [];
+              for (var i = 0; i < sourceEls.length; i++) {
+                sourceUrls.push(sourceEls[i].src || sourceEls[i].getAttribute('data-src') || '');
               }
-              return '';
+              var sourcePick = pick(sourceUrls);
+              if (sourcePick) return sourcePick;
+
+              var metaCandidates = [
+                'meta[property="og:video"]',
+                'meta[property="og:video:url"]',
+                'meta[property="og:video:secure_url"]',
+                'meta[name="twitter:player:stream"]',
+                'meta[itemprop="contentUrl"]'
+              ];
+              var metaUrls = [];
+              for (var j = 0; j < metaCandidates.length; j++) {
+                var m = document.querySelector(metaCandidates[j]);
+                if (m) metaUrls.push(m.getAttribute('content') || '');
+              }
+              var metaPick = pick(metaUrls);
+              if (metaPick) return metaPick;
+
+              var links = document.querySelectorAll('a[href], *[data-href], *[data-src]');
+              var candidateUrls = [];
+              for (var k = 0; k < links.length; k++) {
+                candidateUrls.push(links[k].href || links[k].getAttribute('data-href') || links[k].getAttribute('data-src') || '');
+              }
+              return pick(candidateUrls);
             })();
         """.trimIndent()
 
@@ -279,7 +342,9 @@ class MainActivity : AppCompatActivity() {
             lower.contains(".m3u8") ||
             lower.contains(".webm") ||
             lower.contains(".mkv") ||
-            lower.contains(".mov")
+            lower.contains(".mov") ||
+            lower.contains("video") ||
+            lower.contains("playlist")
     }
 
     private fun normalizeInputUrl(rawUrl: String): String {
@@ -298,18 +363,21 @@ class MainActivity : AppCompatActivity() {
                 false
             }
 
-            UrlValidation.YOUTUBE -> {
-                Toast.makeText(this, getString(R.string.youtube_blocked), Toast.LENGTH_SHORT).show()
-                false
-            }
-
             UrlValidation.VALID -> true
         }
     }
 
-    private fun enqueueDownload(urlText: String) {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "video_$timestamp.mp4"
+    private fun enqueueDownload(
+        urlText: String,
+        userAgentHeader: String? = null,
+        refererHeader: String? = null,
+        mimeTypeHint: String? = null,
+        contentDispositionHint: String? = null
+    ) {
+        val guessedMimeType = mimeTypeHint
+            ?.takeIf { it.isNotBlank() }
+            ?: URLConnection.guessContentTypeFromName(urlText)
+        val fileName = buildDownloadFileName(urlText, guessedMimeType, contentDispositionHint)
 
         val request = DownloadManager.Request(Uri.parse(urlText))
             .setTitle(fileName)
@@ -319,82 +387,50 @@ class MainActivity : AppCompatActivity() {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 
+        guessedMimeType?.let { request.setMimeType(it) }
+
+        val cookieHeader = CookieManager.getInstance().getCookie(urlText)
+        if (!cookieHeader.isNullOrBlank()) {
+            request.addRequestHeader("Cookie", cookieHeader)
+        }
+
+        val effectiveUserAgent = userAgentHeader
+            ?: previewWebView.settings.userAgentString
+        if (!effectiveUserAgent.isNullOrBlank()) {
+            request.addRequestHeader("User-Agent", effectiveUserAgent)
+        }
+
+        val effectiveReferer = refererHeader
+            ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?: currentPreviewUrl.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+        if (!effectiveReferer.isNullOrBlank()) {
+            request.addRequestHeader("Referer", effectiveReferer)
+        }
+
         val downloadId = downloadManager.enqueue(request)
         saveHistoryRecord(downloadId, fileName)
 
         Toast.makeText(this, getString(R.string.download_started), Toast.LENGTH_SHORT).show()
-        refreshHistory()
     }
 
-    private fun refreshHistory() {
-        val records = savedHistoryRecords()
-        val historyItems = records.entries
-            .sortedByDescending { it.key }
-            .map { (downloadId, fileName) ->
-                val detail = readDownloadDetail(downloadId, fileName)
-                DownloadHistoryItem(downloadId = downloadId, title = fileName, detail = detail)
-            }
+    private fun buildDownloadFileName(
+        urlText: String,
+        mimeType: String?,
+        contentDisposition: String?
+    ): String {
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val guessed = URLUtil.guessFileName(urlText, contentDisposition, mimeType)
+            .ifBlank { "video_$timestamp" }
 
-        adapter.submitItems(historyItems)
-        emptyHistoryText.visibility = if (historyItems.isEmpty()) View.VISIBLE else View.GONE
-    }
+        val hasExtension = guessed.substringAfterLast('.', "") != guessed
+        if (hasExtension) return guessed
 
-    private fun readDownloadDetail(downloadId: Long, fallbackFileName: String): String {
-        queryDownload(downloadId).use { cursor ->
-            if (!cursor.moveToFirst()) return getString(R.string.history_missing, fallbackFileName)
+        val extension = mimeType
+            ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+            ?.takeIf { it.isNotBlank() }
+            ?: "mp4"
 
-            val statusLabel = when (cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))) {
-                DownloadManager.STATUS_PENDING -> getString(R.string.status_pending)
-                DownloadManager.STATUS_RUNNING -> getString(R.string.status_running)
-                DownloadManager.STATUS_PAUSED -> getString(R.string.status_paused)
-                DownloadManager.STATUS_SUCCESSFUL -> getString(R.string.status_completed)
-                DownloadManager.STATUS_FAILED -> getString(R.string.status_failed)
-                else -> getString(R.string.status_unknown)
-            }
-
-            val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
-            return if (localUri.isNullOrBlank()) {
-                getString(R.string.history_status_only, statusLabel)
-            } else {
-                getString(R.string.history_status_and_location, statusLabel, localUri)
-            }
-        }
-    }
-
-    private fun openDownloadedFile(downloadId: Long) {
-        queryDownload(downloadId).use { cursor ->
-            if (!cursor.moveToFirst()) {
-                Toast.makeText(this, getString(R.string.file_not_ready), Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
-            if (status != DownloadManager.STATUS_SUCCESSFUL) {
-                Toast.makeText(this, getString(R.string.file_not_ready), Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            val localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
-            if (localUri.isNullOrBlank()) {
-                Toast.makeText(this, getString(R.string.cannot_open_file), Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            val openIntent = Intent(Intent.ACTION_VIEW)
-                .setDataAndType(Uri.parse(localUri), "video/*")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-            try {
-                startActivity(openIntent)
-            } catch (_: ActivityNotFoundException) {
-                Toast.makeText(this, getString(R.string.cannot_open_file), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun queryDownload(downloadId: Long): Cursor {
-        val query = DownloadManager.Query().setFilterById(downloadId)
-        return downloadManager.query(query)
+        return "$guessed.$extension"
     }
 
     private fun saveHistoryRecord(downloadId: Long, fileName: String) {
@@ -430,25 +466,18 @@ class MainActivity : AppCompatActivity() {
         if (url.isBlank()) return UrlValidation.INVALID
 
         val uri = Uri.parse(url)
-        val host = uri.host?.lowercase(Locale.ROOT).orEmpty()
-
         if (uri.scheme != "http" && uri.scheme != "https") return UrlValidation.INVALID
 
-        return if (host.contains("youtube.com") || host.contains("youtu.be")) {
-            UrlValidation.YOUTUBE
-        } else {
-            UrlValidation.VALID
-        }
+        return UrlValidation.VALID
     }
 
     companion object {
-        private const val HISTORY_PREFS = "download_history_prefs"
-        private const val HISTORY_KEY = "download_history_records"
+        const val HISTORY_PREFS = "download_history_prefs"
+        const val HISTORY_KEY = "download_history_records"
     }
 }
 
 enum class UrlValidation {
     VALID,
-    INVALID,
-    YOUTUBE
+    INVALID
 }
