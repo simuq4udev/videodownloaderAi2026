@@ -24,6 +24,7 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import java.net.URI
 import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -252,7 +253,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val knownUrl = detectedVideoUrl
-        if (!knownUrl.isNullOrBlank() && validateUrl(knownUrl) == UrlValidation.VALID) {
+        if (!knownUrl.isNullOrBlank()) {
             enqueueDownload(
                 urlText = knownUrl,
                 userAgentHeader = detectedUserAgent,
@@ -264,10 +265,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         detectVideoUrlFromPage { fromPage ->
-            if (!fromPage.isNullOrBlank() && validateUrl(fromPage) == UrlValidation.VALID) {
-                setDetectedVideoUrl(fromPage)
+            val resolvedUrl = resolveDownloadableUrl(fromPage)
+            if (!resolvedUrl.isNullOrBlank()) {
+                setDetectedVideoUrl(resolvedUrl)
                 enqueueDownload(
-                    urlText = fromPage,
+                    urlText = resolvedUrl,
                     userAgentHeader = detectedUserAgent,
                     refererHeader = currentPreviewUrl,
                     mimeTypeHint = detectedMimeType,
@@ -280,8 +282,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setDetectedVideoUrl(url: String) {
+        val resolvedUrl = resolveDownloadableUrl(url) ?: return
         val firstDetection = detectedVideoUrl.isNullOrBlank()
-        detectedVideoUrl = url
+        detectedVideoUrl = resolvedUrl
         webDownloadButton.isEnabled = true
         webDownloadButton.text = getString(R.string.download_from_webview)
         if (firstDetection) {
@@ -348,6 +351,27 @@ class MainActivity : AppCompatActivity() {
         val trimmed = value.trim().removePrefix("\"").removeSuffix("\"")
         val unescaped = trimmed.replace("\\\\/", "/").replace("\\\"", "\"")
         return if (unescaped.isBlank()) null else unescaped
+    }
+
+
+    private fun resolveDownloadableUrl(rawUrl: String?): String? {
+        if (rawUrl.isNullOrBlank()) return null
+
+        val trimmed = rawUrl.trim()
+        val normalized = when {
+            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
+            trimmed.startsWith("//") -> "https:$trimmed"
+            trimmed.startsWith("/") -> Uri.parse(currentPreviewUrl).buildUpon().path(trimmed).build().toString()
+            else -> {
+                try {
+                    URI(currentPreviewUrl).resolve(trimmed).toString()
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        } ?: return null
+
+        return if (validateUrl(normalized) == UrlValidation.VALID) normalized else null
     }
 
     private fun isLikelyVideoUrl(url: String): Boolean {
