@@ -1,75 +1,41 @@
-# VideoDownloader (Android, Kotlin)
+# Video Downloader (Android, Kotlin)
 
-Market-standard starter project for a **policy-compliant** video downloader. The app only allows downloads from **direct HTTPS URLs** and **blocks common social media domains** to align with platform policies and content rights.
+A complete MVVM Android app for downloading publicly accessible video files from social-page URLs (Instagram/Facebook/TikTok/Twitter pages where a direct video link can be resolved).
 
-## ✅ Compliance Principles
-- **User rights confirmation** required before download.
-- **Social media domains blocked** (YouTube, Instagram, TikTok, etc.).
-- **No circumvention** of DRM or platform restrictions.
-- **Direct URLs only** (e.g., your own CDN or storage bucket).
+> ⚠️ This project intentionally **does not support YouTube downloads** to align with Play Store policy requirements.
 
-## ✅ Features
-- Clean single-activity UI (Material Components).
-- DownloadManager integration.
-- Status messaging for compliance and errors.
-- Starter clean-architecture package layout for scaling to production.
+## Features
 
-## ✅ Complete Android Starter Project Structure
+- Paste URL + queue download from main screen
+- Direct video URL extraction from page HTML (`og:video`, `.mp4/.m4v` link matching)
+- Download queue with progress updates in RecyclerView
+- Pause/resume support
+- Downloaded item title + thumbnail display
+- Runtime permission flow for storage/media video access
+- Settings screen:
+  - Default directory
+  - Max simultaneous downloads
+- About screen with app name/version/copyright
+- Coroutines + MVVM architecture
+- Retrofit + OkHttp networking
+- Error handling (invalid URL, unresolved stream URL, HTTP errors)
 
-```text
-app/src/main/java/com/example/videodownloader/
-├── MainActivity.kt
-├── HomeFragment.kt
-├── HistoryFragment.kt
-├── SettingsFragment.kt
-├── HistoryAdapter.kt
-├── DownloadHistoryStore.kt
-├── DownloadPreferences.kt
-└── starter/
-    ├── AppStructure.kt
-    ├── data/
-    │   ├── local/
-    │   │   └── DownloadEntity.kt
-    │   ├── model/
-    │   │   ├── DownloadItem.kt
-    │   │   ├── VideoFormat.kt
-    │   │   └── VideoInfo.kt
-    │   ├── remote/
-    │   │   └── ParserApi.kt
-    │   └── repository/
-    │       └── VideoRepositoryImpl.kt
-    ├── domain/
-    │   ├── repository/
-    │   │   └── VideoRepository.kt
-    │   └── usecase/
-    │       ├── EnqueueDownloadUseCase.kt
-    │       └── ParseVideoUrlUseCase.kt
-    ├── presentation/
-    │   ├── common/
-    │   │   └── UiEvent.kt
-    │   ├── history/
-    │   │   └── HistoryContract.kt
-    │   ├── home/
-    │   │   └── HomeContract.kt
-    │   └── settings/
-    │       └── SettingsContract.kt
-    ├── worker/
-    │   └── DownloadWorkerPlan.kt
-    └── di/
-        └── ServiceLocator.kt
-```
+## Open in Android Studio
 
-## ✅ How to expand this starter
-1. Replace `ParserApi` with a Retrofit/Ktor implementation.
-2. Add Room entities/DAO for persistent download history.
-3. Add WorkManager worker implementation based on `DownloadWorkerPlan`.
-4. Wire `HomeFragment` to use `ParseVideoUrlUseCase` + `EnqueueDownloadUseCase`.
-5. Replace `ServiceLocator` with Hilt when ready.
+1. Open Android Studio (Giraffe or newer recommended).
+2. Choose **Open** and select this repository root.
+3. Let Gradle sync finish.
+4. Run the `app` configuration on an emulator/device (API 24+).
 
-## ✅ Build & Run
-1. Open the project in **Android Studio**.
-2. Sync Gradle.
-3. Run on a device/emulator (Android 7.0+).
+## Package Structure
 
-## ✅ Policy Note
-This template is designed to comply with Google Play and platform policies by preventing downloads from social media sites and requiring user permission confirmation. It is intended for **content you own or have explicit permission to download**.
+- `data/` – models + settings repository
+- `network/` – Retrofit service + direct URL extractor
+- `download/` – coroutine-based downloader with pause/resume
+- `viewmodel/` – Main/Settings view models
+- `ui/` – activities and RecyclerView adapter
+
+## Notes
+
+- Some websites require login/cookies or anti-bot checks; extraction is best-effort for public pages.
+- On newer Android versions, app-specific directories are used by default.
