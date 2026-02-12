@@ -29,4 +29,7 @@
     <string name="webview_failed_to_load">Web page could not load. Check URL or internet.</string>
     <string name="retrying_with_http">HTTPS failed, retrying with HTTP...</string>
     <string name="link_open_inside_only">This link is kept inside app WebView.</string>
+    <string name="download_requested">Download requested…</string>
+    <string name="download_failed_enqueue">Could not start download. Please try again.</string>
+    <string name="download_failed_reason">Download failed (reason code: %1$d)</string>
 </resources>

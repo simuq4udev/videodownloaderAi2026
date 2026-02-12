@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -55,7 +56,21 @@ class MainActivity : AppCompatActivity() {
             val completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
             if (completedId == -1L || !DownloadHistoryStore.loadRecords(this@MainActivity).containsKey(completedId)) return
 
-            Toast.makeText(this@MainActivity, getString(R.string.download_completed), Toast.LENGTH_SHORT).show()
+            queryDownload(completedId).use { cursor ->
+                if (!cursor.moveToFirst()) return
+
+                val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    Toast.makeText(this@MainActivity, getString(R.string.download_completed), Toast.LENGTH_SHORT).show()
+                } else {
+                    val reason = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.download_failed_reason, reason),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
     }
 
@@ -282,6 +297,7 @@ class MainActivity : AppCompatActivity() {
                 val resolvedUrl = resolveDownloadableUrl(url)
                 if (!resolvedUrl.isNullOrBlank()) {
                     setDetectedVideoUrl(resolvedUrl)
+                    Toast.makeText(this@MainActivity, getString(R.string.download_requested), Toast.LENGTH_SHORT).show()
                     enqueueDownload(
                         urlText = resolvedUrl,
                         userAgentHeader = previewWebView.settings.userAgentString,
@@ -296,6 +312,7 @@ class MainActivity : AppCompatActivity() {
                     val fallbackUrl = resolveDownloadableUrl(fromPage)
                     if (!fallbackUrl.isNullOrBlank()) {
                         setDetectedVideoUrl(fallbackUrl)
+                        Toast.makeText(this@MainActivity, getString(R.string.download_requested), Toast.LENGTH_SHORT).show()
                         enqueueDownload(
                             urlText = fallbackUrl,
                             userAgentHeader = previewWebView.settings.userAgentString,
@@ -497,6 +514,7 @@ class MainActivity : AppCompatActivity() {
 
             if (!targetUrl.isNullOrBlank()) {
                 setDetectedVideoUrl(targetUrl)
+                Toast.makeText(this, getString(R.string.download_requested), Toast.LENGTH_SHORT).show()
                 enqueueDownload(
                     urlText = targetUrl,
                     userAgentHeader = detectedUserAgent,
@@ -746,10 +764,18 @@ class MainActivity : AppCompatActivity() {
             request.addRequestHeader("Referer", effectiveReferer)
         }
 
-        val downloadId = downloadManager.enqueue(request)
-        DownloadHistoryStore.saveRecord(this, downloadId, fileName)
+        try {
+            val downloadId = downloadManager.enqueue(request)
+            DownloadHistoryStore.saveRecord(this, downloadId, fileName)
+            Toast.makeText(this, getString(R.string.download_started), Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, getString(R.string.download_failed_enqueue), Toast.LENGTH_LONG).show()
+        }
+    }
 
-        Toast.makeText(this, getString(R.string.download_started), Toast.LENGTH_SHORT).show()
+    private fun queryDownload(downloadId: Long): Cursor {
+        val query = DownloadManager.Query().setFilterById(downloadId)
+        return downloadManager.query(query)
     }
 
     private fun buildDownloadFileName(
