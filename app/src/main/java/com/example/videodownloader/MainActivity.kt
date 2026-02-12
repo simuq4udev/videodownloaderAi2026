@@ -175,8 +175,7 @@ class MainActivity : AppCompatActivity() {
                 val target = request?.url?.toString().orEmpty()
 
                 if (target.startsWith("http://") || target.startsWith("https://")) {
-                    view?.loadUrl(target)
-                    return true
+                    return false
                 }
 
                 if (target.startsWith("intent://")) {
@@ -307,6 +306,7 @@ class MainActivity : AppCompatActivity() {
                   var u = arr[i];
                   if (!u) continue;
                   if (/\.(mp4|webm|mkv|mov|m3u8)(\?|$)/i.test(u)) return u;
+                  if (/browser_native_(hd|sd)_url|playable_url|sd_src|hd_src/i.test(u)) return u;
                   if (/video|stream|playlist|manifest/i.test(u)) return u;
                 }
                 return '';
@@ -346,6 +346,26 @@ class MainActivity : AppCompatActivity() {
               }
               var metaPick = pick(metaUrls);
               if (metaPick) return metaPick;
+
+              // Important for Facebook: parse embedded script data directly
+              var scripts = document.querySelectorAll('script');
+              var keyPatterns = [
+                /"browser_native_hd_url"\s*:\s*"(https?:[^"]+)"/i,
+                /"browser_native_sd_url"\s*:\s*"(https?:[^"]+)"/i,
+                /"playable_url_quality_hd"\s*:\s*"(https?:[^"]+)"/i,
+                /"playable_url"\s*:\s*"(https?:[^"]+)"/i,
+                /"sd_src"\s*:\s*"(https?:[^"]+)"/i,
+                /"hd_src"\s*:\s*"(https?:[^"]+)"/i
+              ];
+
+              for (var s = 0; s < scripts.length; s++) {
+                var txt = scripts[s].textContent || '';
+                if (!txt) continue;
+                for (var p = 0; p < keyPatterns.length; p++) {
+                  var match = txt.match(keyPatterns[p]);
+                  if (match && match[1]) return match[1].replace(/\\/g, '');
+                }
+              }
 
               var links = document.querySelectorAll('a[href], *[data-href], *[data-src]');
               var candidateUrls = [];
