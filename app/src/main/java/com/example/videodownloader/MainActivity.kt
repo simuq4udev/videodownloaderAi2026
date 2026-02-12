@@ -357,8 +357,51 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
 
         previewWebView.evaluateJavascript(js) { rawResult ->
-            onDetected(cleanJsString(rawResult))
+            val direct = cleanJsString(rawResult)
+            if (!direct.isNullOrBlank()) {
+                onDetected(direct)
+            } else {
+                detectVideoUrlFromPageSource(onDetected)
+            }
         }
+    }
+
+    private fun detectVideoUrlFromPageSource(onDetected: (String?) -> Unit) {
+        val js = "(function(){return document.documentElement ? document.documentElement.outerHTML : '';})();"
+        previewWebView.evaluateJavascript(js) { rawHtml ->
+            val html = cleanJsString(rawHtml).orEmpty()
+            onDetected(extractVideoUrlFromRawHtml(html))
+        }
+    }
+
+    private fun extractVideoUrlFromRawHtml(rawHtml: String): String? {
+        if (rawHtml.isBlank()) return null
+
+        val normalized = rawHtml
+            .replace("\\u0025", "%")
+            .replace("\\u002F", "/")
+            .replace("\\/", "/")
+
+        val priorityPatterns = listOf(
+            Regex("""\"browser_native_hd_url\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE),
+            Regex("""\"browser_native_sd_url\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE),
+            Regex("""\"playable_url_quality_hd\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE),
+            Regex("""\"playable_url\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE),
+            Regex("""\"sd_src\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE),
+            Regex("""\"hd_src\"\s*:\s*\"(https?:[^\"]+)\"""", RegexOption.IGNORE_CASE)
+        )
+
+        for (pattern in priorityPatterns) {
+            val match = pattern.find(normalized)?.groupValues?.getOrNull(1)
+            if (!match.isNullOrBlank()) return match.replace("\\", "")
+        }
+
+        val generic = Regex("""https?://[^\s"'<>]+""", RegexOption.IGNORE_CASE)
+            .findAll(normalized)
+            .map { it.value }
+            .firstOrNull { isLikelyVideoUrl(it) || it.contains(".mp4") || it.contains(".m3u8") }
+
+        return generic
     }
 
     private fun cleanJsString(value: String?): String? {
