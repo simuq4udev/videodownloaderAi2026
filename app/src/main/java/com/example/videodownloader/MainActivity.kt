@@ -1,7 +1,6 @@
 package com.example.videodownloader
 
 import android.app.DownloadManager
-import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -166,16 +165,26 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest?
             ): Boolean {
                 val target = request?.url?.toString().orEmpty()
+
                 if (target.startsWith("http://") || target.startsWith("https://")) {
-                    return false
+                    view?.loadUrl(target)
+                    return true
                 }
 
-                return try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
-                    true
-                } catch (_: ActivityNotFoundException) {
-                    false
+                if (target.startsWith("intent://")) {
+                    val fallback = request?.url?.getQueryParameter("browser_fallback_url")
+                    if (!fallback.isNullOrBlank()) {
+                        view?.loadUrl(fallback)
+                        return true
+                    }
                 }
+
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.link_open_inside_only),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return true
             }
 
             override fun onReceivedError(
@@ -213,6 +222,7 @@ class MainActivity : AppCompatActivity() {
         previewWebView.settings.loadWithOverviewMode = true
         previewWebView.settings.javaScriptCanOpenWindowsAutomatically = true
         previewWebView.settings.mediaPlaybackRequiresUserGesture = false
+        previewWebView.settings.setSupportMultipleWindows(false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             previewWebView.settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             CookieManager.getInstance().setAcceptThirdPartyCookies(previewWebView, true)

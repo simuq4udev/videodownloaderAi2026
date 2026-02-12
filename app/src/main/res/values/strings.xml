@@ -27,4 +27,5 @@
     <string name="searching_video">Searching video...</string>
     <string name="webview_failed_to_load">Web page could not load. Check URL or internet.</string>
     <string name="retrying_with_http">HTTPS failed, retrying with HTTP...</string>
+    <string name="link_open_inside_only">This link is kept inside app WebView.</string>
 </resources>
