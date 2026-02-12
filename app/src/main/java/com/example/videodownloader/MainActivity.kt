@@ -305,72 +305,130 @@ class MainActivity : AppCompatActivity() {
             (function() {
               var buttonText = "$buttonLabel";
 
-              function ensureButton(video) {
-                if (!video || video.dataset.androidDlBound === '1') return;
-                video.dataset.androidDlBound = '1';
-
-                var parent = video.parentElement;
-                if (!parent) return;
-
-                var style = window.getComputedStyle(parent);
-                if (style.position === 'static') {
-                  parent.style.position = 'relative';
+              function getVideoId(video, idx) {
+                if (!video.dataset.androidDlId) {
+                  video.dataset.androidDlId = 'android_video_' + idx + '_' + Math.random().toString(36).slice(2, 8);
                 }
-
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.innerText = buttonText;
-                btn.style.position = 'absolute';
-                btn.style.zIndex = '99999';
-                btn.style.right = '10px';
-                btn.style.bottom = '10px';
-                btn.style.padding = '6px 10px';
-                btn.style.border = 'none';
-                btn.style.borderRadius = '8px';
-                btn.style.background = '#0B57D0';
-                btn.style.color = '#fff';
-                btn.style.fontSize = '12px';
-                btn.style.cursor = 'pointer';
-                btn.style.opacity = '0.92';
-
-                btn.addEventListener('click', function(ev) {
-                  ev.preventDefault();
-                  ev.stopPropagation();
-                  var src = video.currentSrc || video.src || '';
-                  if (!src) {
-                    var source = video.querySelector('source');
-                    if (source) src = source.src || source.getAttribute('src') || '';
-                  }
-                  if (!src) return;
-
-                  var absolute;
-                  try {
-                    absolute = new URL(src, window.location.href).href;
-                  } catch (e) {
-                    absolute = src;
-                  }
-
-                  if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
-                    window.AndroidDownloader.downloadVideo(absolute);
-                  }
-                });
-
-                parent.appendChild(btn);
+                return video.dataset.androidDlId;
               }
 
-              function attachAll() {
+              function getOrCreateLayer() {
+                var layer = document.getElementById('android-dl-layer');
+                if (!layer) {
+                  layer = document.createElement('div');
+                  layer.id = 'android-dl-layer';
+                  layer.style.position = 'fixed';
+                  layer.style.left = '0';
+                  layer.style.top = '0';
+                  layer.style.width = '100%';
+                  layer.style.height = '100%';
+                  layer.style.pointerEvents = 'none';
+                  layer.style.zIndex = '2147483647';
+                  document.documentElement.appendChild(layer);
+                }
+                return layer;
+              }
+
+              function getVideoSource(video) {
+                if (!video) return '';
+                var src = video.currentSrc || video.src || '';
+                if (!src) {
+                  var source = video.querySelector('source');
+                  if (source) src = source.src || source.getAttribute('src') || '';
+                }
+                if (!src) return '';
+
+                try {
+                  return new URL(src, window.location.href).href;
+                } catch (e) {
+                  return src;
+                }
+              }
+
+              function getOrCreateButton(layer, id) {
+                var btn = layer.querySelector('button[data-video-id="' + id + '"]');
+                if (!btn) {
+                  btn = document.createElement('button');
+                  btn.type = 'button';
+                  btn.dataset.videoId = id;
+                  btn.innerText = buttonText;
+                  btn.style.position = 'fixed';
+                  btn.style.padding = '6px 10px';
+                  btn.style.border = 'none';
+                  btn.style.borderRadius = '8px';
+                  btn.style.background = '#0B57D0';
+                  btn.style.color = '#fff';
+                  btn.style.fontSize = '12px';
+                  btn.style.cursor = 'pointer';
+                  btn.style.opacity = '0.92';
+                  btn.style.pointerEvents = 'auto';
+                  btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+
+                  btn.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    var targetVideo = document.querySelector('video[data-android-dl-id="' + btn.dataset.videoId + '"]');
+                    var absolute = getVideoSource(targetVideo);
+                    if (!absolute) return;
+
+                    if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
+                      window.AndroidDownloader.downloadVideo(absolute);
+                    }
+                  });
+
+                  layer.appendChild(btn);
+                }
+                return btn;
+              }
+
+              function refreshButtons() {
+                var layer = getOrCreateLayer();
                 var videos = document.querySelectorAll('video');
+                var seen = {};
+
                 for (var i = 0; i < videos.length; i++) {
-                  ensureButton(videos[i]);
+                  var video = videos[i];
+                  var rect = video.getBoundingClientRect();
+                  if (rect.width < 80 || rect.height < 60) continue;
+
+                  var id = getVideoId(video, i);
+                  video.setAttribute('data-android-dl-id', id);
+                  seen[id] = true;
+
+                  var btn = getOrCreateButton(layer, id);
+                  var top = Math.max(8, rect.bottom - 42);
+                  var left = Math.max(8, rect.right - 120);
+                  btn.style.top = top + 'px';
+                  btn.style.left = left + 'px';
+                  btn.style.display = (rect.bottom < 0 || rect.top > window.innerHeight) ? 'none' : 'block';
+                }
+
+                var allButtons = layer.querySelectorAll('button[data-video-id]');
+                for (var b = 0; b < allButtons.length; b++) {
+                  var button = allButtons[b];
+                  if (!seen[button.dataset.videoId]) {
+                    button.remove();
+                  }
                 }
               }
 
-              attachAll();
+              refreshButtons();
 
               if (!window.__androidDlObserver) {
-                var observer = new MutationObserver(function() { attachAll(); });
+                var observer = new MutationObserver(function() { refreshButtons(); });
                 observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
                 window.__androidDlObserver = observer;
+              }
+
+              if (!window.__androidDlRefreshBound) {
+                window.addEventListener('scroll', refreshButtons, { passive: true });
+                window.addEventListener('resize', refreshButtons);
+                window.__androidDlRefreshBound = true;
+              }
+
+              if (!window.__androidDlTimer) {
+                window.__androidDlTimer = setInterval(refreshButtons, 1200);
               }
             })();
         """.trimIndent()
