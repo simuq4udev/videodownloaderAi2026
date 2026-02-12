@@ -430,11 +430,14 @@ class MainActivity : AppCompatActivity() {
                     if (!absolute) {
                       absolute = extractFromScripts();
                     }
-                    if (!absolute) return;
 
-                    btn.dataset.videoUrl = absolute;
+                    if (absolute) {
+                      btn.dataset.videoUrl = absolute;
+                    }
+
                     if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
-                      window.AndroidDownloader.downloadVideo(absolute);
+                      // Always call bridge; native side will fallback to full-page detection if URL is empty.
+                      window.AndroidDownloader.downloadVideo(absolute || '');
                     }
                   });
 
