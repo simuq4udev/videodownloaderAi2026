@@ -345,6 +345,28 @@ class MainActivity : AppCompatActivity() {
                 }
               }
 
+              function extractFromScripts() {
+                var scripts = document.querySelectorAll('script');
+                var keyPatterns = [
+                  /"browser_native_hd_url"\s*:\s*"(https?:[^"]+)"/i,
+                  /"browser_native_sd_url"\s*:\s*"(https?:[^"]+)"/i,
+                  /"playable_url_quality_hd"\s*:\s*"(https?:[^"]+)"/i,
+                  /"playable_url"\s*:\s*"(https?:[^"]+)"/i,
+                  /"sd_src"\s*:\s*"(https?:[^"]+)"/i,
+                  /"hd_src"\s*:\s*"(https?:[^"]+)"/i
+                ];
+
+                for (var i = 0; i < scripts.length; i++) {
+                  var txt = scripts[i].textContent || '';
+                  if (!txt) continue;
+                  for (var p = 0; p < keyPatterns.length; p++) {
+                    var match = txt.match(keyPatterns[p]);
+                    if (match && match[1]) return match[1].replace(/\\/g, '');
+                  }
+                }
+                return '';
+              }
+
               function getOrCreateButton(layer, id) {
                 var btn = layer.querySelector('button[data-video-id="' + id + '"]');
                 if (!btn) {
@@ -369,9 +391,13 @@ class MainActivity : AppCompatActivity() {
                     ev.stopPropagation();
 
                     var targetVideo = document.querySelector('video[data-android-dl-id="' + btn.dataset.videoId + '"]');
-                    var absolute = getVideoSource(targetVideo);
+                    var absolute = getVideoSource(targetVideo) || btn.dataset.videoUrl || '';
+                    if (!absolute) {
+                      absolute = extractFromScripts();
+                    }
                     if (!absolute) return;
 
+                    btn.dataset.videoUrl = absolute;
                     if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
                       window.AndroidDownloader.downloadVideo(absolute);
                     }
@@ -397,6 +423,10 @@ class MainActivity : AppCompatActivity() {
                   seen[id] = true;
 
                   var btn = getOrCreateButton(layer, id);
+                  var liveUrl = getVideoSource(video);
+                  if (liveUrl) {
+                    btn.dataset.videoUrl = liveUrl;
+                  }
                   var top = Math.max(8, rect.bottom - 42);
                   var left = Math.max(8, rect.right - 120);
                   btn.style.top = top + 'px';
