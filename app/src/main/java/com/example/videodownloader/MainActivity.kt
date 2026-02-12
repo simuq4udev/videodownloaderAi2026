@@ -326,6 +326,60 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        @JavascriptInterface
+        fun downloadVideoById(videoId: String?) {
+            runOnUiThread {
+                resolveVideoUrlByElementId(videoId) { resolvedUrl ->
+                    if (!resolvedUrl.isNullOrBlank()) {
+                        setDetectedVideoUrl(resolvedUrl)
+                        Toast.makeText(this@MainActivity, getString(R.string.download_requested), Toast.LENGTH_SHORT).show()
+                        enqueueDownload(
+                            urlText = resolvedUrl,
+                            userAgentHeader = previewWebView.settings.userAgentString,
+                            refererHeader = currentPreviewUrl,
+                            mimeTypeHint = detectedMimeType,
+                            contentDispositionHint = detectedContentDisposition
+                        )
+                    } else {
+                        downloadVideo(null)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun resolveVideoUrlByElementId(videoId: String?, onResult: (String?) -> Unit) {
+        if (videoId.isNullOrBlank()) {
+            onResult(null)
+            return
+        }
+
+        val escapedId = videoId
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+
+        val js = """
+            (function() {
+              var v = document.querySelector('video[data-android-dl-id="$escapedId"]');
+              if (!v) return '';
+
+              var src = v.currentSrc || v.src || '';
+              if (!src) {
+                var source = v.querySelector('source');
+                if (source) src = source.src || source.getAttribute('src') || '';
+              }
+
+              if (!src) return '';
+              try { return new URL(src, window.location.href).href; } catch (e) { return src; }
+            })();
+        """.trimIndent()
+
+        previewWebView.evaluateJavascript(js) { raw ->
+            val cleaned = cleanJsString(raw)
+            val resolved = resolveDownloadableUrl(cleaned)
+            onResult(resolved)
+        }
     }
 
     private fun injectInlineVideoButtons() {
@@ -435,9 +489,14 @@ class MainActivity : AppCompatActivity() {
                       btn.dataset.videoUrl = absolute;
                     }
 
-                    if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
-                      // Always call bridge; native side will fallback to full-page detection if URL is empty.
-                      window.AndroidDownloader.downloadVideo(absolute || '');
+                    if (window.AndroidDownloader) {
+                      if (window.AndroidDownloader.downloadVideoById) {
+                        window.AndroidDownloader.downloadVideoById(btn.dataset.videoId || '');
+                        return;
+                      }
+                      if (window.AndroidDownloader.downloadVideo) {
+                        window.AndroidDownloader.downloadVideo(absolute || '');
+                      }
                     }
                   });
 
