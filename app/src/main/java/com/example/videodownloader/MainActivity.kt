@@ -280,19 +280,33 @@ class MainActivity : AppCompatActivity() {
         fun downloadVideo(url: String?) {
             runOnUiThread {
                 val resolvedUrl = resolveDownloadableUrl(url)
-                if (resolvedUrl.isNullOrBlank()) {
-                    Toast.makeText(this@MainActivity, getString(R.string.video_not_found), Toast.LENGTH_SHORT).show()
+                if (!resolvedUrl.isNullOrBlank()) {
+                    setDetectedVideoUrl(resolvedUrl)
+                    enqueueDownload(
+                        urlText = resolvedUrl,
+                        userAgentHeader = previewWebView.settings.userAgentString,
+                        refererHeader = currentPreviewUrl,
+                        mimeTypeHint = detectedMimeType,
+                        contentDispositionHint = detectedContentDisposition
+                    )
                     return@runOnUiThread
                 }
 
-                setDetectedVideoUrl(resolvedUrl)
-                enqueueDownload(
-                    urlText = resolvedUrl,
-                    userAgentHeader = previewWebView.settings.userAgentString,
-                    refererHeader = currentPreviewUrl,
-                    mimeTypeHint = detectedMimeType,
-                    contentDispositionHint = detectedContentDisposition
-                )
+                detectVideoUrlFromPage { fromPage ->
+                    val fallbackUrl = resolveDownloadableUrl(fromPage)
+                    if (!fallbackUrl.isNullOrBlank()) {
+                        setDetectedVideoUrl(fallbackUrl)
+                        enqueueDownload(
+                            urlText = fallbackUrl,
+                            userAgentHeader = previewWebView.settings.userAgentString,
+                            refererHeader = currentPreviewUrl,
+                            mimeTypeHint = detectedMimeType,
+                            contentDispositionHint = detectedContentDisposition
+                        )
+                    } else {
+                        Toast.makeText(this@MainActivity, getString(R.string.video_not_found), Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }
@@ -338,11 +352,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (!src) return '';
 
+                var absolute;
                 try {
-                  return new URL(src, window.location.href).href;
+                  absolute = new URL(src, window.location.href).href;
                 } catch (e) {
-                  return src;
+                  absolute = src;
                 }
+
+                if (!/^https?:\/\//i.test(absolute)) return '';
+                return absolute;
               }
 
               function extractFromScripts() {
@@ -361,7 +379,7 @@ class MainActivity : AppCompatActivity() {
                   if (!txt) continue;
                   for (var p = 0; p < keyPatterns.length; p++) {
                     var match = txt.match(keyPatterns[p]);
-                    if (match && match[1]) return match[1].replace(/\\/g, '');
+                    if (match && match[1]) return match[1].replace(/\\u002F/g, '/').replace(/\\\//g, '/');
                   }
                 }
                 return '';
@@ -568,7 +586,7 @@ class MainActivity : AppCompatActivity() {
                 if (!txt) continue;
                 for (var p = 0; p < keyPatterns.length; p++) {
                   var match = txt.match(keyPatterns[p]);
-                  if (match && match[1]) return match[1].replace(/\\/g, '');
+                  if (match && match[1]) return match[1].replace(/\\u002F/g, '/').replace(/\\\//g, '/');
                 }
               }
 
