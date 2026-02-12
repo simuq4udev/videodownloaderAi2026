@@ -25,6 +25,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -83,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         val webCloseButton: Button = findViewById(R.id.web_close_button)
 
         setupWebView()
+        setupBackPressHandler()
         webDownloadButton.isEnabled = false
         webDownloadButton.text = getString(R.string.searching_video)
 
