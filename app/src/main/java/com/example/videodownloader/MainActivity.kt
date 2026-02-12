@@ -154,6 +154,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupWebView() {
         previewWebView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                detectedVideoUrl = null
+                webDownloadButton.isEnabled = false
+                webDownloadButton.text = getString(R.string.searching_video)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 currentPreviewUrl = url.orEmpty()
@@ -258,24 +265,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val knownUrl = detectedVideoUrl
-        if (!knownUrl.isNullOrBlank()) {
-            enqueueDownload(
-                urlText = knownUrl,
-                userAgentHeader = detectedUserAgent,
-                refererHeader = currentPreviewUrl,
-                mimeTypeHint = detectedMimeType,
-                contentDispositionHint = detectedContentDisposition
-            )
-            return
-        }
-
+        // Always re-detect on click to pick the currently playing/selected video
         detectVideoUrlFromPage { fromPage ->
             val resolvedUrl = resolveDownloadableUrl(fromPage)
-            if (!resolvedUrl.isNullOrBlank()) {
-                setDetectedVideoUrl(resolvedUrl)
+            val targetUrl = resolvedUrl ?: detectedVideoUrl
+
+            if (!targetUrl.isNullOrBlank()) {
+                setDetectedVideoUrl(targetUrl)
                 enqueueDownload(
-                    urlText = resolvedUrl,
+                    urlText = targetUrl,
                     userAgentHeader = detectedUserAgent,
                     refererHeader = currentPreviewUrl,
                     mimeTypeHint = detectedMimeType,
