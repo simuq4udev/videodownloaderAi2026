@@ -12,8 +12,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import okhttp3.Request
-import java.io.File
+import okhttp3.Response
 import java.io.RandomAccessFile
+import java.net.URL
 import java.util.concurrent.Semaphore
 
 class DownloadCoordinator(maxConcurrent: Int = 2) {
@@ -25,7 +26,6 @@ class DownloadCoordinator(maxConcurrent: Int = 2) {
     val events: SharedFlow<DownloadItem> = _events
 
     fun updateMaxConcurrent(maxConcurrent: Int) {
-        // Simplified: recreate only if no active jobs.
         if (jobs.isEmpty()) {
             while (semaphore.availablePermits() < maxConcurrent) {
                 semaphore.release()
@@ -60,23 +60,29 @@ class DownloadCoordinator(maxConcurrent: Int = 2) {
         val output = item.outputFile
         output.parentFile?.mkdirs()
 
-        val existingBytes = if (output.exists()) output.length() else 0L
-        val requestBuilder = Request.Builder().url(directUrl)
-        if (existingBytes > 0L) {
-            requestBuilder.addHeader("Range", "bytes=$existingBytes-")
-        }
-
         _events.emit(item.copy(status = DownloadStatus.DOWNLOADING, directVideoUrl = directUrl))
 
         try {
-            val response = NetworkModule.okHttpClient.newCall(requestBuilder.build()).execute()
+            var existingBytes = if (output.exists()) output.length() else 0L
+            var response = executeDownloadRequest(item, directUrl, existingBytes)
+
+            // Some CDNs reject range or hotlink requests with 400/403/416.
+            if ((response.code == 400 || response.code == 403 || response.code == 416) && existingBytes > 0L) {
+                response.close()
+                output.delete()
+                existingBytes = 0L
+                response = executeDownloadRequest(item, directUrl, existingBytes)
+            }
+
             if (!response.isSuccessful) {
-                _events.emit(item.copy(status = DownloadStatus.ERROR, errorMessage = "Network error: ${response.code}"))
+                _events.emit(item.copy(status = DownloadStatus.ERROR, errorMessage = "HTTP ${response.code}. Try a public post URL and open it once in browser."))
+                response.close()
                 return
             }
 
             val body = response.body ?: run {
                 _events.emit(item.copy(status = DownloadStatus.ERROR, errorMessage = "Empty response body"))
+                response.close()
                 return
             }
 
@@ -109,6 +115,8 @@ class DownloadCoordinator(maxConcurrent: Int = 2) {
                 }
             }
 
+            response.close()
+
             _events.emit(
                 item.copy(
                     progress = 100,
@@ -127,7 +135,31 @@ class DownloadCoordinator(maxConcurrent: Int = 2) {
         }
     }
 
+    private fun executeDownloadRequest(item: DownloadItem, directUrl: String, existingBytes: Long): Response {
+        val requestBuilder = Request.Builder()
+            .url(directUrl)
+            .header("User-Agent", MOBILE_USER_AGENT)
+            .header("Accept", "video/*,*/*;q=0.8")
+            .header("Referer", item.sourceUrl)
+            .header("Origin", originOf(item.sourceUrl))
+
+        if (existingBytes > 0L) {
+            requestBuilder.header("Range", "bytes=$existingBytes-")
+        }
+
+        return NetworkModule.okHttpClient.newCall(requestBuilder.build()).execute()
+    }
+
+    private fun originOf(url: String): String {
+        return runCatching {
+            val parsed = URL(url)
+            "${parsed.protocol}://${parsed.host}"
+        }.getOrDefault(url)
+    }
+
     companion object {
         private const val DEFAULT_BUFFER = 8 * 1024
+        private const val MOBILE_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
     }
 }
