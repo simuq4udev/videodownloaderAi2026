@@ -5,9 +5,8 @@
     <string name="download_started">Downloading started</string>
     <string name="download_completed">Download completed</string>
     <string name="no_history">No downloads in history yet.</string>
-    <string name="url_hint">Paste direct video URL (https://...)</string>
-    <string name="invalid_url">Please enter a valid direct HTTP/HTTPS URL.</string>
-    <string name="youtube_blocked">YouTube links are blocked by policy.</string>
+    <string name="url_hint">Paste any website/video URL (https://...)</string>
+    <string name="invalid_url">Please enter a valid HTTP/HTTPS URL.</string>
     <string name="status_pending">Pending</string>
     <string name="status_running">Running</string>
     <string name="status_paused">Paused</string>
