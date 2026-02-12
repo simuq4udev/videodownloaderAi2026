@@ -13,6 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
+import android.webkit.JavascriptInterface
 import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
 import android.webkit.WebResourceError
@@ -174,6 +175,7 @@ class MainActivity : AppCompatActivity() {
                         webDownloadButton.text = getString(R.string.download_from_webview)
                     }
                 }
+                injectInlineVideoButtons()
             }
 
             override fun shouldOverrideUrlLoading(
@@ -243,6 +245,8 @@ class MainActivity : AppCompatActivity() {
             CookieManager.getInstance().setAcceptThirdPartyCookies(previewWebView, true)
         }
 
+        previewWebView.addJavascriptInterface(VideoDownloadBridge(), "AndroidDownloader")
+
         previewWebView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val looksVideo = !url.isNullOrBlank() && (
                 isLikelyVideoUrl(url) ||
@@ -269,6 +273,104 @@ class MainActivity : AppCompatActivity() {
             }
             false
         }
+    }
+
+    private inner class VideoDownloadBridge {
+        @JavascriptInterface
+        fun downloadVideo(url: String?) {
+            runOnUiThread {
+                val resolvedUrl = resolveDownloadableUrl(url)
+                if (resolvedUrl.isNullOrBlank()) {
+                    Toast.makeText(this@MainActivity, getString(R.string.video_not_found), Toast.LENGTH_SHORT).show()
+                    return@runOnUiThread
+                }
+
+                setDetectedVideoUrl(resolvedUrl)
+                enqueueDownload(
+                    urlText = resolvedUrl,
+                    userAgentHeader = previewWebView.settings.userAgentString,
+                    refererHeader = currentPreviewUrl,
+                    mimeTypeHint = detectedMimeType,
+                    contentDispositionHint = detectedContentDisposition
+                )
+            }
+        }
+    }
+
+    private fun injectInlineVideoButtons() {
+        val js = """
+            (function() {
+              function ensureButton(video) {
+                if (!video || video.dataset.androidDlBound === '1') return;
+                video.dataset.androidDlBound = '1';
+
+                var parent = video.parentElement;
+                if (!parent) return;
+
+                var style = window.getComputedStyle(parent);
+                if (style.position === 'static') {
+                  parent.style.position = 'relative';
+                }
+
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerText = 'Download Video';
+                btn.style.position = 'absolute';
+                btn.style.zIndex = '99999';
+                btn.style.right = '10px';
+                btn.style.bottom = '10px';
+                btn.style.padding = '6px 10px';
+                btn.style.border = 'none';
+                btn.style.borderRadius = '8px';
+                btn.style.background = '#0B57D0';
+                btn.style.color = '#fff';
+                btn.style.fontSize = '12px';
+                btn.style.cursor = 'pointer';
+                btn.style.opacity = '0.92';
+
+                btn.addEventListener('click', function(ev) {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  var src = video.currentSrc || video.src || '';
+                  if (!src) {
+                    var source = video.querySelector('source');
+                    if (source) src = source.src || source.getAttribute('src') || '';
+                  }
+                  if (!src) return;
+
+                  var absolute;
+                  try {
+                    absolute = new URL(src, window.location.href).href;
+                  } catch (e) {
+                    absolute = src;
+                  }
+
+                  if (window.AndroidDownloader && window.AndroidDownloader.downloadVideo) {
+                    window.AndroidDownloader.downloadVideo(absolute);
+                  }
+                });
+
+                parent.appendChild(btn);
+              }
+
+              function attachAll() {
+                var videos = document.querySelectorAll('video');
+                for (var i = 0; i < videos.length; i++) {
+                  ensureButton(videos[i]);
+                }
+              }
+
+              attachAll();
+
+              if (!window.__androidDlObserver) {
+                var observer = new MutationObserver(function() { attachAll(); });
+                observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
+                window.__androidDlObserver = observer;
+              }
+            })();
+        """.trimIndent()
+
+        previewWebView.evaluateJavascript(js, null)
     }
 
     private fun startDownloadFromWebContainer() {
