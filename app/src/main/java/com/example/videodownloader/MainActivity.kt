@@ -137,6 +137,10 @@ class MainActivity : AppCompatActivity() {
         webDownloadButton.isEnabled = false
         webDownloadButton.text = getString(R.string.searching_video)
 
+        if (isLikelyVideoUrl(url)) {
+            setDetectedVideoUrl(url)
+        }
+
         topControls.visibility = View.GONE
         webContainer.visibility = View.VISIBLE
         previewWebView.loadUrl(url)
@@ -157,6 +161,9 @@ class MainActivity : AppCompatActivity() {
                 detectVideoUrlFromPage { foundUrl ->
                     if (!foundUrl.isNullOrBlank()) {
                         setDetectedVideoUrl(foundUrl)
+                    } else {
+                        webDownloadButton.isEnabled = true
+                        webDownloadButton.text = getString(R.string.download_from_webview)
                     }
                 }
             }
@@ -303,6 +310,14 @@ class MainActivity : AppCompatActivity() {
                   if (/video|stream|playlist|manifest/i.test(u)) return u;
                 }
                 return '';
+              }
+
+              var videos = document.querySelectorAll('video');
+              for (var vi = 0; vi < videos.length; vi++) {
+                var vv = videos[vi];
+                var isActive = !vv.paused || vv.currentTime > 0 || vv.autoplay;
+                if (isActive && vv.currentSrc) return vv.currentSrc;
+                if (isActive && vv.src) return vv.src;
               }
 
               var v = document.querySelector('video');
