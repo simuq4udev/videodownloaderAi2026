@@ -15,13 +15,25 @@ class VideoUrlExtractor(private val pageService: PageService) {
             extractMeta(body),
             extractJsonField(body, "video_url"),
             extractJsonField(body, "contentUrl"),
-            extractEscapedMp4(body),
-            extractDirectMp4(body)
+            extractJsonField(body, "playAddr"),
+            extractJsonField(body, "play_addr"),
+            extractEscapedVideoUrl(body),
+            extractDirectVideoUrl(body)
         )
-
-        return@withContext candidates
             .map { decodeCandidate(it) }
-            .firstOrNull { it.startsWith("http") && (it.contains(".mp4") || it.contains(".m4v")) }
+            .distinct()
+
+        // Prefer obvious media URLs first, but keep non-extension candidates as fallback.
+        val preferred = candidates.firstOrNull {
+            it.startsWith("http") && (
+                it.contains(".mp4", ignoreCase = true) ||
+                    it.contains(".m4v", ignoreCase = true) ||
+                    it.contains("mime_type=video", ignoreCase = true) ||
+                    it.contains("video", ignoreCase = true)
+                )
+        }
+
+        return@withContext preferred ?: candidates.firstOrNull { it.startsWith("http") }
     }
 
     private fun extractMeta(body: String): String? {
@@ -45,14 +57,14 @@ class VideoUrlExtractor(private val pageService: PageService) {
         return regex.find(body)?.groupValues?.getOrNull(1)
     }
 
-    private fun extractEscapedMp4(body: String): String? {
-        return Regex("https?:\\\\?/\\\\?/[^\"'\\s>]+\\.(mp4|m4v)(\\?[^\"'\\s>]*)?", RegexOption.IGNORE_CASE)
+    private fun extractEscapedVideoUrl(body: String): String? {
+        return Regex("https?:\\\\?/\\\\?/[^\"'\\s>]+(\\.(mp4|m4v)|video)[^\"'\\s>]*", RegexOption.IGNORE_CASE)
             .find(body)
             ?.value
     }
 
-    private fun extractDirectMp4(body: String): String? {
-        return Regex("https?://[^\"'\\s>]+\\.(mp4|m4v)(\\?[^\"'\\s>]*)?", RegexOption.IGNORE_CASE)
+    private fun extractDirectVideoUrl(body: String): String? {
+        return Regex("https?://[^\"'\\s>]+(\\.(mp4|m4v)|video)[^\"'\\s>]*", RegexOption.IGNORE_CASE)
             .find(body)
             ?.value
     }
